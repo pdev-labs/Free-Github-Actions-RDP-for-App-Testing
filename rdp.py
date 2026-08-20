@@ -345,10 +345,10 @@ jobs:
         sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
         sudo docker image prune --all --force || true
     - name: Install QEMU
-      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 qemu-kvm wget curl
+      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 qemu-kvm wget curl aria2
     - name: Download ISO
       env:
-        GH_TOKEN: ${{{{ github.token }}}}
+        GH_TOKEN: ${{ github.token }}
       run: |
 {download_logic}
     - name: Boot Custom ISO
@@ -597,7 +597,7 @@ def main():
             iso_url = ""
             while not iso_url.startswith("http"):
                 iso_url = input("\\nEnter the direct HTTP/HTTPS URL to the ISO file: ").strip()
-            custom_download_logic = f'wget "{iso_url}" -O custom.iso'
+            custom_download_logic = f'aria2c -x 16 -s 16 -k 1M -o custom.iso "{iso_url}"'
             method = "url"
         else:
             iso_path = ""
