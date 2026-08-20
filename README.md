@@ -24,6 +24,9 @@ A powerful Python automation script that dynamically provisions fully interactiv
 - **Extensive Linux Distributions**: Choose from Ubuntu, Debian, Kali Linux, Arch Linux, Fedora, Linux Mint, and Manjaro.
 - **Desktop Environments**: Instantly spin up XFCE, GNOME, KDE Plasma, i3wm, or run in headless CLI-only mode.
 - **Automatic PAM Patching**: Bypasses strict Docker container PAM (Pluggable Authentication Module) restrictions so that `xrdp` authentication works flawlessly out-of-the-box.
+- **Config Profiles (Save & Load)**: Save your exact environment choices to `profiles.json` and deploy future workspaces instantly without clicking through menus!
+- **Dual Tunneling Engine (Ngrok/Pinggy)**: Seamlessly bypass the 60-minute session limits by choosing Ngrok (6 hours). Uses a dynamic regex engine to inject your Auth Token directly into the workflow.
+- **Audio Redirection**: Natively streams sound from the cloud desktop directly to your local computer (Supports Windows `Audiosrv` & Linux `pulseaudio-module-xrdp` on-the-fly compilation).
 - **Multi-Architecture**: Automatically utilizes QEMU to emulate `arm64` environments for testing cross-platform compatibility.
 
 ---
