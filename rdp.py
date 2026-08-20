@@ -17,6 +17,40 @@ from rich.spinner import Spinner
 
 console = Console()
 
+import json
+import os
+
+def load_profile():
+    if os.path.exists("profiles.json"):
+        with open("profiles.json", "r") as f:
+            profiles = json.load(f)
+        if profiles:
+            choices = [Choice("new", "Create New")] + [Choice(k, f"Load Profile: {k}") for k in profiles.keys()]
+            choice = inquirer.select(
+                message="Load a saved profile or create a new one?",
+                choices=choices
+            ).execute()
+            if choice != "new":
+                return profiles[choice]
+    return None
+
+def save_profile(data):
+    profiles = {}
+    if os.path.exists("profiles.json"):
+        with open("profiles.json", "r") as f:
+            profiles = json.load(f)
+    
+    name = inquirer.text(
+        message="Enter a name to save this configuration (or press Enter to skip):"
+    ).execute().strip()
+    
+    if name:
+        profiles[name] = data
+        with open("profiles.json", "w") as f:
+            json.dump(profiles, f, indent=4)
+        print(f"[+] Profile '{name}' saved successfully!")
+
+
 WINDOWS_CLI_WORKFLOW_TEMPLATE = r"""name: Windows SSH
 on: workflow_dispatch
 jobs:
@@ -65,6 +99,9 @@ jobs:
         Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -name "fDenyTSConnections" -value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -name "UserAuthentication" -value 1
+        Set-Service -Name Audiosrv -StartupType 'Automatic'
+        Start-Service Audiosrv
+        reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services" /v fAllowAudioPlayback /t REG_DWORD /d 1 /f
         net user runneradmin ThePassword123!
     - name: Start Pinggy tunnel and get connection URL
       shell: bash
@@ -208,6 +245,16 @@ jobs:
             sed -i 's/required pam_loginuid.so/optional pam_loginuid.so/g' /etc/pam.d/* || true
             /usr/sbin/sshd
             if [ "$DE_CHOICE" != "cli" ]; then
+
+                # Compile and install pulseaudio-module-xrdp for audio redirection
+                echo "Installing PulseAudio and XRDP audio modules..."
+                apt-get install -y pulseaudio pulseaudio-utils build-essential dpkg-dev libpulse-dev git autoconf libtool
+                cd /tmp
+                git clone https://github.com/neutrinolabs/pulseaudio-module-xrdp.git
+                cd pulseaudio-module-xrdp
+                ./bootstrap && ./configure PULSE_DIR=/usr/src/pulseaudio
+                make && make install
+                cd /
                 # Fix XRDP authentication bugs in Docker
                 groupadd tsusers || true
                 groupadd shadow || true
@@ -241,6 +288,16 @@ jobs:
             sed -i 's/required pam_loginuid.so/optional pam_loginuid.so/g' /etc/pam.d/* || true
             /usr/sbin/sshd
             if [ "$DE_CHOICE" != "cli" ]; then
+
+                # Compile and install pulseaudio-module-xrdp for audio redirection
+                echo "Installing PulseAudio and XRDP audio modules..."
+                apt-get install -y pulseaudio pulseaudio-utils build-essential dpkg-dev libpulse-dev git autoconf libtool
+                cd /tmp
+                git clone https://github.com/neutrinolabs/pulseaudio-module-xrdp.git
+                cd pulseaudio-module-xrdp
+                ./bootstrap && ./configure PULSE_DIR=/usr/src/pulseaudio
+                make && make install
+                cd /
                 # Fix XRDP authentication bugs in Docker
                 groupadd tsusers || true
                 groupadd shadow || true
@@ -255,7 +312,7 @@ jobs:
                 echo "account required pam_unix.so" >> /etc/pam.d/xrdp-sesman
                 echo "password required pam_unix.so" >> /etc/pam.d/xrdp-sesman
                 echo "session required pam_unix.so" >> /etc/pam.d/xrdp-sesman
-                pacman -Syu --noconfirm dbus base-devel
+                pacman -Syu --noconfirm dbus base-devel pulseaudio
                 mkdir -p /run/dbus
                 dbus-daemon --system --nofork &
                 pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
@@ -283,6 +340,16 @@ jobs:
             sed -i 's/required pam_loginuid.so/optional pam_loginuid.so/g' /etc/pam.d/* || true
             /usr/sbin/sshd
             if [ "$DE_CHOICE" != "cli" ]; then
+
+                # Compile and install pulseaudio-module-xrdp for audio redirection
+                echo "Installing PulseAudio and XRDP audio modules..."
+                apt-get install -y pulseaudio pulseaudio-utils build-essential dpkg-dev libpulse-dev git autoconf libtool
+                cd /tmp
+                git clone https://github.com/neutrinolabs/pulseaudio-module-xrdp.git
+                cd pulseaudio-module-xrdp
+                ./bootstrap && ./configure PULSE_DIR=/usr/src/pulseaudio
+                make && make install
+                cd /
                 # Fix XRDP authentication bugs in Docker
                 groupadd tsusers || true
                 groupadd shadow || true
@@ -486,29 +553,51 @@ def start_p2p_server(iso_dir, base_dir):
     pinggy_proc.terminate()
     sys.exit(1)
 
-def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice="xfce", app_choice_str="", custom_download_logic="", pub_key=""):
+
+import re
+
+# Previous duplicate block removed.
+
+def inject_tunnel_logic(template, tunnel, ngrok_token, port):
+    if tunnel == "pinggy":
+        return template
+        
+    if tunnel == "ngrok":
+        # Replace Pinggy SSH command with Ngrok
+        ngrok_cmd = f"""wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
+        tar -xf ngrok-v3-stable-linux-amd64.tgz
+        ./ngrok authtoken {ngrok_token}
+        ./ngrok tcp {port} --log=stdout > pinggy.log 2>&1 &"""
+        
+        # We replace the pinggy bash ssh command. 
+        # Note: the pinggy log file is still used to capture output for minimal diff.
+        template = re.sub(r"ssh -T -p 443 -R0:localhost:[0-9]+ -o StrictHostKeyChecking=no.*&", ngrok_cmd, template)
+        
+
+        template = re.sub(r'URL=\$\(grep -o "tcp://\.\*" .* \| head -n 1\)', "URL=$(curl -s localhost:4040/api/tunnels | grep -o '\"public_url\":\"tcp://[^\"]*' | grep -o 'tcp://.*' | head -n 1)", template)
+        template = template.replace("Pinggy free tier is limited to 60 minutes", "Ngrok tunnel will persist for up to 6 hours")
+        template = template.replace("Pinggy tunnel", "Ngrok tunnel")
+        return template
+
+def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice="xfce", app_choice_str="", custom_download_logic="", pub_key="", tunnel="pinggy", ngrok_token=""):
     if os_choice == "windows":
         if de_choice == "cli":
-            return WINDOWS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice)
+            return inject_tunnel_logic(WINDOWS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 22)
         else:
-            return WINDOWS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice)
+            return inject_tunnel_logic(WINDOWS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 3389)
     elif os_choice == "linux":
         qemu = ""
         if architecture != "amd64":
             qemu = "\\n    - name: Set up QEMU for multi-arch support\\n      uses: docker/setup-qemu-action@v3"
-        return LINUX_WORKFLOW_TEMPLATE.replace("{distro}", version_choice).replace("{architecture}", architecture).replace("{qemu_setup}", qemu).replace("{de_choice}", de_choice).replace("{app_choice_str}", app_choice_str)
+        port = 22 if de_choice == "cli" else 3389
+        return inject_tunnel_logic(LINUX_WORKFLOW_TEMPLATE.replace("{distro}", version_choice).replace("{architecture}", architecture).replace("{qemu_setup}", qemu).replace("{de_choice}", de_choice).replace("{app_choice_str}", app_choice_str), tunnel, ngrok_token, port)
     elif os_choice == "macos":
         if de_choice == "cli":
-            return MACOS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice).replace("{pub_key}", pub_key)
+            return inject_tunnel_logic(MACOS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice).replace("{pub_key}", pub_key), tunnel, ngrok_token, 22)
         else:
-            return MACOS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice)
+            return inject_tunnel_logic(MACOS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 5900)
     elif os_choice == "custom_iso":
-        # Format strings require matching curly braces unless escaped.
-        # {download_logic} is safely replaced here without escaping issues
-        # because we constructed CUSTOM_ISO_WORKFLOW_TEMPLATE cleanly.
-        lines = ["        " + line for line in custom_download_logic.strip().split("\\n")]
-        formatted_logic = "\\n".join(lines)
-        return CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", formatted_logic)
+        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", custom_download_logic), tunnel, ngrok_token, 5900)
     else:
         raise ValueError(f"Unknown OS choice: {os_choice}")
 
@@ -746,6 +835,22 @@ def main():
     workflow_dir = os.path.join(base_dir, ".github", "workflows")
     os.makedirs(workflow_dir, exist_ok=True)
     
+    
+    if not loaded_profile:
+        tunnel = inquirer.select(
+            message="Select Tunneling Provider:",
+            choices=[
+                Choice("pinggy", "Pinggy (Free, No Auth, 60-min limit)"),
+                Choice("ngrok", "Ngrok (Free Auth Token Required, Persistent 6-hour limit)")
+            ]
+        ).execute()
+        
+        ngrok_token = ""
+        if tunnel == "ngrok":
+            ngrok_token = inquirer.secret(
+                message="Enter your Ngrok Auth Token:"
+            ).execute().strip()
+    
     pub_key = ""
     if os_choice == "macos" and de_choice == "cli":
         if not os.path.exists("macos_runner_key"):
@@ -754,7 +859,7 @@ def main():
         with open("macos_runner_key.pub", "r") as f:
             pub_key = f.read().strip()
 
-    workflow_yml = generate_workflow(os_choice, version_choice, architecture, de_choice, app_choice_str, custom_download_logic, pub_key)
+    workflow_yml = generate_workflow(os_choice, version_choice, architecture, de_choice, app_choice_str, custom_download_logic, pub_key, tunnel, ngrok_token)
     workflow_path = os.path.join(workflow_dir, "rdp.yml")
     with open(workflow_path, "w") as f:
         f.write(workflow_yml)
