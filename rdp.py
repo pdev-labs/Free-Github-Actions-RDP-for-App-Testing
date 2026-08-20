@@ -5,6 +5,53 @@ import shutil
 import subprocess
 import time
 import re
+import threading
+import json
+import socket
+from http.server import SimpleHTTPRequestHandler, HTTPServer
+from InquirerPy import inquirer
+from InquirerPy.validator import EmptyInputValidator
+from InquirerPy.base.control import Choice
+from rich.console import Console
+from rich.spinner import Spinner
+
+console = Console()
+
+WINDOWS_CLI_WORKFLOW_TEMPLATE = r"""name: Windows SSH
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: {runner_image}
+    timeout-minutes: 9999
+    steps:
+    - name: Enable SSH Access
+      run: |
+        Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+        Start-Service sshd
+        Set-Service -Name sshd -StartupType 'Automatic'
+        net user runneradmin ThePassword123!
+    - name: Start Pinggy tunnel and get connection URL
+      shell: bash
+      run: |
+        ssh -T -p 443 -R0:localhost:22 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io < /dev/null > pinggy.log 2>&1 &
+        sleep 15
+        URL=$(grep -o "tcp://.*" pinggy.log | head -n 1)
+        if [ ! -z "$URL" ]; then
+            PORT=$(echo $URL | cut -d':' -f3)
+            HOST=$(echo $URL | cut -d'/' -f3 | cut -d':' -f1)
+            echo "==========================================================="
+            echo "SSH is Ready!"
+            echo "Connect using this command: env TERM=xterm-256color ssh -p $PORT runneradmin@$HOST"
+            echo "Password: ThePassword123!"
+            echo "Note: Pinggy free tier is limited to 60 minutes."
+            echo "==========================================================="
+            sleep 21600
+        else
+            echo "Error: Pinggy failed to start. See logs below."
+            cat pinggy.log
+            exit 1
+        fi
+"""
 
 WINDOWS_WORKFLOW_TEMPLATE = """name: Windows RDP
 on: workflow_dispatch
@@ -280,7 +327,7 @@ jobs:
                 echo "SSH Server is Ready!"
                 PORT=$(echo $URL | awk -F':' '{print $3}')
                 DOMAIN=$(echo $URL | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
-                echo "Connect using this command: ssh $USER@$DOMAIN -p $PORT"
+                echo "Connect using this command: env TERM=xterm-256color ssh $USER@$DOMAIN -p $PORT"
             else
                 echo "RDP is Ready!"
                 echo "Connect using this address: ${URL#tcp://}"
@@ -302,7 +349,43 @@ jobs:
         docker run --rm --privileged --platform linux/{architecture} -v $(pwd)/setup.sh:/setup.sh {distro} /setup.sh
 """
 
-MACOS_WORKFLOW_TEMPLATE = """name: macOS VNC
+MACOS_CLI_WORKFLOW_TEMPLATE = r"""name: macOS SSH
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: {runner_image}
+    timeout-minutes: 9999
+    steps:
+    - name: Enable SSH (Remote Login)
+      run: |
+        sudo systemsetup -setremotelogin on || true
+        sudo dseditgroup -o edit -a $USER -t user com.apple.access_ssh || true
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        echo "{pub_key}" > ~/.ssh/authorized_keys
+        chmod 600 ~/.ssh/authorized_keys
+    - name: Start Pinggy tunnel
+      run: |
+        ssh -T -p 443 -R0:localhost:22 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io > pinggy.log 2>&1 &
+        sleep 10
+        URL=$(grep -o "tcp://.*" pinggy.log | head -n 1)
+        if [ ! -z "$URL" ]; then
+            PORT=$(echo $URL | cut -d':' -f3)
+            HOST=$(echo $URL | cut -d'/' -f3 | cut -d':' -f1)
+            echo "==========================================================="
+            echo "SSH is Ready!"
+            echo "Connect using this command: env TERM=xterm-256color ssh -i macos_runner_key -p $PORT runner@$HOST"
+            echo "Note: Pinggy free tier is limited to 60 minutes."
+            echo "==========================================================="
+            sleep 21600
+        else
+            echo "Error: Pinggy failed to start. See logs below."
+            cat pinggy.log
+            exit 1
+        fi
+"""
+
+MACOS_WORKFLOW_TEMPLATE = r"""name: macOS VNC
 on: workflow_dispatch
 jobs:
   build:
@@ -311,7 +394,12 @@ jobs:
     steps:
     - name: Enable VNC (Screen Sharing)
       run: |
-        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvnclegacy -vnclegacy yes -clientopts -setvncpw -vncpw ThePassword123! -restart -agent -privs -all
+        sudo sysadminctl -resetPasswordFor $USER -newPassword macvnc12
+        sudo sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "INSERT OR REPLACE INTO access (service, client, client_type, allowed, prompt_count, csreq, indirect_object_identifier_type, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServiceScreenCapture','com.apple.RemoteDesktop.agent',0,2,4,1,NULL,'UNUSED',0,0);" || true
+        sudo sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "INSERT OR REPLACE INTO access (service, client, client_type, allowed, prompt_count, csreq, indirect_object_identifier_type, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServicePostEvent','com.apple.RemoteDesktop.agent',0,2,4,1,NULL,'UNUSED',0,0);" || true
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -users $USER -privs -all -clientopts -setvnclegacy -vnclegacy yes
+        echo "macvnc12" | perl -we 'BEGIN { @k = unpack "C*", pack "H*", "1734516E8BA8C5E2FF1C39567390ADCA"}; $_ = <>; chomp; s/^(.{8}).*/$1/; @p = unpack "C*", $_; foreach (@k) { printf "%02X", $_ ^ (shift @p || 0) }; print "\n"' | sudo tee /Library/Preferences/com.apple.VNCSettings.txt
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -restart -agent
     - name: Start Pinggy tunnel
       run: |
         ssh -T -p 443 -R0:localhost:5900 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io > pinggy.log 2>&1 &
@@ -321,7 +409,8 @@ jobs:
             echo "==========================================================="
             echo "VNC is Ready!"
             echo "Connect using this address: ${URL#tcp://}"
-            echo "Password: ThePassword123!"
+            echo "Username: runner"
+            echo "Password: macvnc12"
             echo "Note: Pinggy free tier is limited to 60 minutes."
             echo "==========================================================="
             sleep 21600
@@ -397,16 +486,22 @@ def start_p2p_server(iso_dir, base_dir):
     pinggy_proc.terminate()
     sys.exit(1)
 
-def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice="xfce", app_choice_str="", custom_download_logic=""):
+def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice="xfce", app_choice_str="", custom_download_logic="", pub_key=""):
     if os_choice == "windows":
-        return WINDOWS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice)
+        if de_choice == "cli":
+            return WINDOWS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice)
+        else:
+            return WINDOWS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice)
     elif os_choice == "linux":
         qemu = ""
         if architecture != "amd64":
             qemu = "\\n    - name: Set up QEMU for multi-arch support\\n      uses: docker/setup-qemu-action@v3"
         return LINUX_WORKFLOW_TEMPLATE.replace("{distro}", version_choice).replace("{architecture}", architecture).replace("{qemu_setup}", qemu).replace("{de_choice}", de_choice).replace("{app_choice_str}", app_choice_str)
     elif os_choice == "macos":
-        return MACOS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice)
+        if de_choice == "cli":
+            return MACOS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice).replace("{pub_key}", pub_key)
+        else:
+            return MACOS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice)
     elif os_choice == "custom_iso":
         # Format strings require matching curly braces unless escaped.
         # {download_logic} is safely replaced here without escaping issues
@@ -417,9 +512,9 @@ def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice
     else:
         raise ValueError(f"Unknown OS choice: {os_choice}")
 
-def run_command(cmd, cwd=None):
+def run_command(cmd, cwd=None, capture_output=False):
     try:
-        subprocess.run(cmd, cwd=cwd, check=True)
+        return subprocess.run(cmd, cwd=cwd, check=True, capture_output=capture_output)
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {' '.join(cmd)}")
         sys.exit(1)
@@ -453,8 +548,8 @@ def main():
         print("Error: 'git' is not installed. Please install it to proceed.")
         sys.exit(1)
 
-    print("Welcome to the GitHub Actions RDP Provisioner")
-    print("-" * 50)
+    console.print("[bold cyan]Welcome to the GitHub Actions RDP Provisioner[/bold cyan]")
+    console.print("[dim]" + "-" * 50 + "[/dim]")
     
     check_gh_auth()
     
@@ -464,10 +559,10 @@ def main():
         print("Failed to retrieve your GitHub username. Exiting.")
         sys.exit(1)
 
-    repo_name = input("Enter a name for the GitHub repository (e.g., my-rdp-testing): ").strip()
-    if not repo_name:
-        print("Repository name cannot be empty.")
-        sys.exit(1)
+    repo_name = inquirer.text(
+        message="Enter a name for the GitHub repository (e.g., my-rdp-testing):",
+        validate=EmptyInputValidator()
+    ).execute().strip()
 
     repo_exists = False
     try:
@@ -477,15 +572,23 @@ def main():
         pass
 
     if repo_exists:
-        print(f"\\nWARNING: The repository '{gh_user}/{repo_name}' already exists.")
-        choice = input("Do you want to clean it and reuse it? This will overwrite the repo. (y/n): ").strip().lower()
-        if choice != 'y':
+        clean = inquirer.confirm(
+            message=f"WARNING: The repository '{gh_user}/{repo_name}' already exists.\nDo you want to clean it and reuse it? This will overwrite the repo.",
+            default=True
+        ).execute()
+        if not clean:
             print("Aborting.")
             sys.exit(1)
 
     os_choices = {
         "windows": ["windows-latest", "windows-2022", "windows-2019"],
-        "macos": ["macos-latest", "macos-14", "macos-13", "macos-12", "macos-11"],
+        "macos": [
+            Choice("macos-latest", "macos-latest (Apple Silicon - Black Screen Warning)"),
+            Choice("macos-14", "macos-14 (Apple Silicon - Black Screen Warning)"),
+            Choice("macos-13", "macos-13 (Intel - VNC Supported)"),
+            Choice("macos-12", "macos-12 (Intel - VNC Supported)"),
+            Choice("macos-11", "macos-11 (Intel - VNC Supported)")
+        ],
         "linux": [
             "ubuntu:latest", "ubuntu:22.04", "ubuntu:20.04",
             "debian:latest", "debian:bullseye",
@@ -498,9 +601,15 @@ def main():
         "custom_iso": ["Custom Local ISO (QEMU Nested Virtualization)"]
     }
     
-    os_choice = ""
-    while os_choice not in os_choices.keys():
-        os_choice = input("\\nWhich OS do you want to test on? (windows/linux/macos/custom_iso): ").lower().strip()
+    os_choice = inquirer.select(
+        message="Which OS do you want to test on?",
+        choices=[
+            Choice("windows", "Windows"),
+            Choice("linux", "Linux"),
+            Choice("macos", "macOS"),
+            Choice("custom_iso", "Custom ISO")
+        ]
+    ).execute()
 
     version_choice = "latest"
     architecture = "amd64"
@@ -510,111 +619,105 @@ def main():
     p2p_procs = None
 
     if os_choice != "custom_iso":
-        print(f"Available versions/distros for {os_choice}:")
-        for i, ver in enumerate(os_choices[os_choice], 1):
-            print(f"{i}. {ver}")
-        
-        version_idx = -1
-        while version_idx < 0 or version_idx >= len(os_choices[os_choice]):
-            try:
-                choice = input(f"Select version/distro (1-{len(os_choices[os_choice])}): ").strip()
-                version_idx = int(choice) - 1
-            except ValueError:
-                pass
-                
-        version_choice = os_choices[os_choice][version_idx]
+        if os_choice == "macos":
+            version_choice = inquirer.select(
+                message=f"Select version/distro for {os_choice}:",
+                choices=os_choices[os_choice]
+            ).execute()
+        else:
+            version_choices = [Choice(v, v) for v in os_choices[os_choice]]
+            version_choice = inquirer.select(
+                message=f"Select version/distro for {os_choice}:",
+                choices=version_choices
+            ).execute()
 
         if os_choice == "linux":
-            arch_choices = ["amd64", "arm64"]
-            print("\\nAvailable CPU architectures for Linux:")
-            for i, arch in enumerate(arch_choices, 1):
-                print(f"{i}. {arch}")
+            architecture = inquirer.select(
+                message="Select CPU architecture for Linux:",
+                choices=[Choice("amd64", "amd64"), Choice("arm64", "arm64")]
+            ).execute()
             
-            arch_idx = -1
-            while arch_idx < 0 or arch_idx >= len(arch_choices):
-                try:
-                    choice = input(f"Select architecture (1-{len(arch_choices)}): ").strip()
-                    arch_idx = int(choice) - 1
-                except ValueError:
-                    pass
-            architecture = arch_choices[arch_idx]
-            
-            de_choices = ["stock", "xfce", "gnome", "kde", "i3", "cli"]
-            print("\\nAvailable Desktop Environments / Window Managers:")
-            for i, de in enumerate(de_choices, 1):
-                desc = ""
-                if de == "stock": desc = " (Installs the distro's exact default GUI)"
-                if de == "cli": desc = " (No GUI, SSH only. Extremely fast boot)"
-                print(f"{i}. {de}{desc}")
-                
-            de_idx = -1
-            while de_idx < 0 or de_idx >= len(de_choices):
-                try:
-                    choice = input(f"Select Desktop Environment (1-{len(de_choices)}): ").strip()
-                    de_idx = int(choice) - 1
-                except ValueError:
-                    pass
-            de_choice = de_choices[de_idx]
+            de_choices = [
+                Choice("stock", "stock (Installs the distro's exact default GUI)"),
+                Choice("xfce", "xfce"),
+                Choice("gnome", "gnome"),
+                Choice("kde", "kde"),
+                Choice("i3", "i3"),
+                Choice("cli", "cli (No GUI, SSH only. Extremely fast boot)")
+            ]
+            de_choice = inquirer.select(
+                message="Select Desktop Environment / Window Manager:",
+                choices=de_choices
+            ).execute()
 
             app_choices_list = [
-                ("Web Browser (Firefox)", "firefox"),
-                ("CLI Editors (nano, vim)", "nano vim"),
-                ("Containerization (Docker)", "docker.io"),
-                ("Network/Security Tools (Nmap, Netcat, curl, wget)", "nmap netcat curl wget"),
-                ("Build Tools (git, gcc, make)", "git build-essential")
+                Choice("0", "Web Browser (Firefox)"),
+                Choice("1", "CLI Editors (nano, vim)"),
+                Choice("2", "Containerization (Docker)"),
+                Choice("3", "Network/Security Tools (Nmap, Netcat, curl, wget)"),
+                Choice("4", "Build Tools (git, gcc, make)")
             ]
+            selected_apps = inquirer.checkbox(
+                message="Select additional apps to pre-install (Space to select, Enter to confirm):",
+                choices=app_choices_list
+            ).execute()
+            app_choice_str = ",".join(selected_apps) if selected_apps else ""
+
+        elif os_choice == "macos":
+            de_choice = inquirer.select(
+                message="Select interaction mode for macOS:",
+                choices=[
+                    Choice("gui", "VNC Desktop (GUI) - Recommended for macos-13 (Intel)"),
+                    Choice("cli", "SSH Terminal Only (CLI) - Best for macos-latest (Apple Silicon)")
+                ]
+            ).execute()
             
-            print("\\nSelect additional apps to pre-install:")
-            for i, (app_desc, _) in enumerate(app_choices_list, 1):
-                print(f"{i}. {app_desc}")
-                
-            app_input = input(f"Enter comma-separated numbers (e.g., 1,3,4) or press Enter to skip: ").strip()
-            app_choice_indices = []
-            if app_input:
-                for part in app_input.split(','):
-                    try:
-                        idx = int(part.strip()) - 1
-                        if 0 <= idx < len(app_choices_list):
-                            app_choice_indices.append(idx)
-                    except ValueError:
-                        pass
-            
-            app_choice_str = ",".join(map(str, app_choice_indices))
+        elif os_choice == "windows":
+            de_choice = inquirer.select(
+                message="Select interaction mode for Windows:",
+                choices=[
+                    Choice("gui", "RDP Desktop (GUI) - Standard Windows Desktop"),
+                    Choice("cli", "SSH Terminal Only (CLI) - PowerShell/CMD over SSH")
+                ]
+            ).execute()
 
     else:
         # Custom ISO Logic
-        print("\\nSelect ISO Source:")
-        print("1. Local File (on your computer)")
-        print("2. Direct Download URL (e.g. https://example.com/os.iso)")
-        source_choice = ""
-        while source_choice not in ["1", "2"]:
-            source_choice = input("Select source (1-2): ").strip()
+        source_choice = inquirer.select(
+            message="Select Custom ISO source:",
+            choices=[
+                Choice("1", "Local File (I have the ISO downloaded on my PC)"),
+                Choice("2", "Direct URL (I have an HTTP/HTTPS link to the ISO)")
+            ]
+        ).execute()
             
         custom_download_logic = ""
         base_dir = os.path.join(os.getcwd(), repo_name)
         
         if source_choice == "2":
-            iso_url = ""
-            while not iso_url.startswith("http"):
-                iso_url = input("\\nEnter the direct HTTP/HTTPS URL to the ISO file: ").strip()
+            iso_url = inquirer.text(
+                message="Enter the direct HTTP/HTTPS URL to the ISO file:",
+                validate=lambda x: x.startswith("http")
+            ).execute().strip()
             custom_download_logic = f'aria2c -x 16 -s 16 -k 1M -o custom.iso "{iso_url}"'
             method = "url"
         else:
-            iso_path = ""
-            while not os.path.isfile(iso_path):
-                iso_path = input("\\nEnter the absolute path to your local .iso file: ").strip()
-                if not os.path.isfile(iso_path):
-                    print("File not found or is not a valid file. Try again.")
+            iso_path = inquirer.filepath(
+                message="Enter the absolute path to your local .iso file:",
+                validate=lambda x: os.path.isfile(x),
+                only_files=True
+            ).execute().strip()
             
             file_size_gb = os.path.getsize(iso_path) / (1024 ** 3)
             print(f"ISO Size: {file_size_gb:.2f} GB")
             
-            print("\\nSelect Transfer Method:")
-            print("1. GitHub Releases (Cloud) - Automatically uploads and runs autonomously.")
-            print("2. Peer-to-Peer (Local Stream) - Streams directly from your PC (requires terminal to stay open).")
-            method = ""
-            while method not in ["1", "2"]:
-                method = input("Select method (1-2): ").strip()
+            method = inquirer.select(
+                message="Select Transfer Method:",
+                choices=[
+                    Choice("1", "GitHub Releases (Cloud) - Automatically uploads and runs autonomously."),
+                    Choice("2", "Peer-to-Peer (Local Stream) - Streams directly from your PC (requires terminal to stay open).")
+                ]
+            ).execute()
                 
             if not os.path.exists(base_dir):
                 os.makedirs(base_dir, exist_ok=True)
@@ -643,19 +746,27 @@ def main():
     workflow_dir = os.path.join(base_dir, ".github", "workflows")
     os.makedirs(workflow_dir, exist_ok=True)
     
-    workflow_yml = generate_workflow(os_choice, version_choice, architecture, de_choice, app_choice_str, custom_download_logic)
+    pub_key = ""
+    if os_choice == "macos" and de_choice == "cli":
+        if not os.path.exists("macos_runner_key"):
+            print("\nGenerating SSH key pair for macOS CLI access...")
+            subprocess.run(["ssh-keygen", "-t", "ed25519", "-f", "macos_runner_key", "-N", "", "-q"], check=True)
+        with open("macos_runner_key.pub", "r") as f:
+            pub_key = f.read().strip()
+
+    workflow_yml = generate_workflow(os_choice, version_choice, architecture, de_choice, app_choice_str, custom_download_logic, pub_key)
     workflow_path = os.path.join(workflow_dir, "rdp.yml")
     with open(workflow_path, "w") as f:
         f.write(workflow_yml)
 
-    print("[2/4] Initializing Git repository...")
+    console.print("[bold green][2/4] Initializing Git repository...[/bold green]")
     run_command(["git", "init"], cwd=base_dir)
     ensure_git_config(base_dir)
     run_command(["git", "branch", "-M", "main"], cwd=base_dir)
     run_command(["git", "add", "."], cwd=base_dir)
     run_command(["git", "commit", "-m", "Initial commit: Add RDP workflow"], cwd=base_dir)
 
-    print("[3/4] Setting up GitHub repository...")
+    console.print("[bold green][3/4] Setting up GitHub repository...[/bold green]")
     try:
         check_repo = subprocess.run(["gh", "api", f"repos/{gh_user}/{repo_name}"], capture_output=True, text=True)
         if check_repo.returncode == 0:
@@ -690,8 +801,8 @@ def main():
             print("[+] Uploading ISO to GitHub Release...")
             subprocess.run(["gh", "release", "upload", tag, iso_path], cwd=base_dir, check=True)
 
-    print("[4/4] Provisioning complete!")
-    print("-" * 50)
+    console.print("[bold green][4/4] Provisioning complete![/bold green]")
+    console.print("[dim]" + "-" * 50 + "[/dim]")
     print("Next steps:")
     
     print(f"Repository URL: https://github.com/{gh_user}/{repo_name}/actions")
@@ -704,8 +815,8 @@ def main():
         print("Error triggering the workflow.")
         print(f"     cd {repo_name} && gh workflow run rdp.yml")
     
-    print("-" * 50)
-    print("All done!")
+    console.print("[dim]" + "-" * 50 + "[/dim]")
+    console.print("[bold magenta]All done![/bold magenta]")
     print("The environment is booting up now. Please allow 1-3 minutes for it to start.")
     print(f"Click the Repository URL above, go to your running workflow, and click 'Get connection URL'.")
     print(f"   - For Linux/Windows: Use an RDP client to connect.")
