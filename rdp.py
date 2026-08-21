@@ -640,202 +640,221 @@ def main():
     console.print("[bold cyan]Welcome to the GitHub Actions RDP Provisioner[/bold cyan]")
     console.print("[dim]" + "-" * 50 + "[/dim]")
     
-    check_gh_auth()
-    
-    try:
-        gh_user = subprocess.run(["gh", "api", "user", "-q", ".login"], capture_output=True, text=True, check=True).stdout.strip()
-    except subprocess.CalledProcessError:
-        print("Failed to retrieve your GitHub username. Exiting.")
-        sys.exit(1)
-
-    repo_name = inquirer.text(
-        message="Enter a name for the GitHub repository (e.g., my-rdp-testing):",
-        validate=EmptyInputValidator()
-    ).execute().strip()
-
-    repo_exists = False
-    try:
-        subprocess.run(["gh", "repo", "view", f"{gh_user}/{repo_name}"], capture_output=True, check=True)
-        repo_exists = True
-    except subprocess.CalledProcessError:
-        pass
-
-    if repo_exists:
-        clean = inquirer.confirm(
-            message=f"WARNING: The repository '{gh_user}/{repo_name}' already exists.\nDo you want to clean it and reuse it? This will overwrite the repo.",
-            default=True
-        ).execute()
-        if not clean:
-            print("Aborting.")
-            sys.exit(1)
-
-    os_choices = {
-        "windows": ["windows-latest", "windows-2022", "windows-2019"],
-        "macos": [
-            Choice("macos-latest", "macos-latest (Apple Silicon - Black Screen Warning)"),
-            Choice("macos-14", "macos-14 (Apple Silicon - Black Screen Warning)"),
-            Choice("macos-13", "macos-13 (Intel - VNC Supported)"),
-            Choice("macos-12", "macos-12 (Intel - VNC Supported)"),
-            Choice("macos-11", "macos-11 (Intel - VNC Supported)")
-        ],
-        "linux": [
-            "ubuntu:latest", "ubuntu:22.04", "ubuntu:20.04",
-            "debian:latest", "debian:bullseye",
-            "kalilinux/kali-rolling",
-            "archlinux:latest",
-            "fedora:latest", "fedora:39",
-            "linuxmintd/mint21.2-amd64",
-            "manjaro/base:latest"
-        ],
-        "custom_iso": ["Custom Local ISO (QEMU Nested Virtualization)"]
-    }
-    
-    os_choice = inquirer.select(
-        message="Which OS do you want to test on?",
-        choices=[
-            Choice("windows", "Windows"),
-            Choice("linux", "Linux"),
-            Choice("macos", "macOS"),
-            Choice("custom_iso", "Custom ISO")
-        ]
-    ).execute()
-
-    version_choice = "latest"
-    architecture = "amd64"
-    de_choice = "xfce"
-    app_choice_str = ""
-    custom_download_logic = ""
-    p2p_procs = None
-
-    if os_choice != "custom_iso":
-        if os_choice == "macos":
-            version_choice = inquirer.select(
-                message=f"Select version/distro for {os_choice}:",
-                choices=os_choices[os_choice]
-            ).execute()
-        else:
-            version_choices = [Choice(v, v) for v in os_choices[os_choice]]
-            version_choice = inquirer.select(
-                message=f"Select version/distro for {os_choice}:",
-                choices=version_choices
-            ).execute()
-
-        if os_choice == "linux":
-            architecture = inquirer.select(
-                message="Select CPU architecture for Linux:",
-                choices=[Choice("amd64", "amd64"), Choice("arm64", "arm64")]
-            ).execute()
-            
-            de_choices = [
-                Choice("stock", "stock (Installs the distro's exact default GUI)"),
-                Choice("xfce", "xfce"),
-                Choice("gnome", "gnome"),
-                Choice("kde", "kde"),
-                Choice("i3", "i3"),
-                Choice("cli", "cli (No GUI, SSH only. Extremely fast boot)")
-            ]
-            de_choice = inquirer.select(
-                message="Select Desktop Environment / Window Manager:",
-                choices=de_choices
-            ).execute()
-
-            app_choices_list = [
-                Choice("0", "Web Browser (Firefox)"),
-                Choice("1", "CLI Editors (nano, vim)"),
-                Choice("2", "Containerization (Docker)"),
-                Choice("3", "Network/Security Tools (Nmap, Netcat, curl, wget)"),
-                Choice("4", "Build Tools (git, gcc, make)")
-            ]
-            selected_apps = inquirer.checkbox(
-                message="Select additional apps to pre-install (Space to select, Enter to confirm):",
-                choices=app_choices_list
-            ).execute()
-            app_choice_str = ",".join(selected_apps) if selected_apps else ""
-
-        elif os_choice == "macos":
-            de_choice = inquirer.select(
-                message="Select interaction mode for macOS:",
-                choices=[
-                    Choice("gui", "VNC Desktop (GUI) - Recommended for macos-13 (Intel)"),
-                    Choice("cli", "SSH Terminal Only (CLI) - Best for macos-latest (Apple Silicon)")
-                ]
-            ).execute()
-            
-        elif os_choice == "windows":
-            de_choice = inquirer.select(
-                message="Select interaction mode for Windows:",
-                choices=[
-                    Choice("gui", "RDP Desktop (GUI) - Standard Windows Desktop"),
-                    Choice("cli", "SSH Terminal Only (CLI) - PowerShell/CMD over SSH")
-                ]
-            ).execute()
-
+    loaded_profile = load_profile()
+    if loaded_profile:
+        repo_name = loaded_profile.get('repo_name', 'cloud-desktop')
+        gh_user = loaded_profile.get('gh_user', '')
+        os_choice = loaded_profile.get('os_choice', 'linux')
+        version_choice = loaded_profile.get('version_choice', 'ubuntu:latest')
+        architecture = loaded_profile.get('architecture', 'amd64')
+        de_choice = loaded_profile.get('de_choice', 'xfce')
+        app_choice_str = loaded_profile.get('app_choice_str', '')
+        custom_download_logic = loaded_profile.get('custom_download_logic', '')
+        method = loaded_profile.get('method', '')
+        tag = loaded_profile.get('tag', 'v1.0')
+        iso_path = loaded_profile.get('iso_path', '')
+        iso_name = loaded_profile.get('iso_name', 'custom.iso')
+        file_size_gb = loaded_profile.get('file_size_gb', 0)
+        tunnel = loaded_profile.get('tunnel', 'pinggy')
+        ngrok_token = loaded_profile.get('ngrok_token', '')
+        pub_key = loaded_profile.get('pub_key', '')
     else:
-        # Custom ISO Logic
-        source_choice = inquirer.select(
-            message="Select Custom ISO source:",
+        check_gh_auth()
+        
+        try:
+            gh_user = subprocess.run(["gh", "api", "user", "-q", ".login"], capture_output=True, text=True, check=True).stdout.strip()
+        except subprocess.CalledProcessError:
+            print("Failed to retrieve your GitHub username. Exiting.")
+            sys.exit(1)
+    
+        repo_name = inquirer.text(
+            message="Enter a name for the GitHub repository (e.g., my-rdp-testing):",
+            validate=EmptyInputValidator()
+        ).execute().strip()
+    
+        repo_exists = False
+        try:
+            subprocess.run(["gh", "repo", "view", f"{gh_user}/{repo_name}"], capture_output=True, check=True)
+            repo_exists = True
+        except subprocess.CalledProcessError:
+            pass
+    
+        if repo_exists:
+            clean = inquirer.confirm(
+                message=f"WARNING: The repository '{gh_user}/{repo_name}' already exists.\nDo you want to clean it and reuse it? This will overwrite the repo.",
+                default=True
+            ).execute()
+            if not clean:
+                print("Aborting.")
+                sys.exit(1)
+    
+        os_choices = {
+            "windows": ["windows-latest", "windows-2022", "windows-2019"],
+            "macos": [
+                Choice("macos-latest", "macos-latest (Apple Silicon - Black Screen Warning)"),
+                Choice("macos-14", "macos-14 (Apple Silicon - Black Screen Warning)"),
+                Choice("macos-13", "macos-13 (Intel - VNC Supported)"),
+                Choice("macos-12", "macos-12 (Intel - VNC Supported)"),
+                Choice("macos-11", "macos-11 (Intel - VNC Supported)")
+            ],
+            "linux": [
+                "ubuntu:latest", "ubuntu:22.04", "ubuntu:20.04",
+                "debian:latest", "debian:bullseye",
+                "kalilinux/kali-rolling",
+                "archlinux:latest",
+                "fedora:latest", "fedora:39",
+                "linuxmintd/mint21.2-amd64",
+                "manjaro/base:latest"
+            ],
+            "custom_iso": ["Custom Local ISO (QEMU Nested Virtualization)"]
+        }
+        
+        os_choice = inquirer.select(
+            message="Which OS do you want to test on?",
             choices=[
-                Choice("1", "Local File (I have the ISO downloaded on my PC)"),
-                Choice("2", "Direct URL (I have an HTTP/HTTPS link to the ISO)")
+                Choice("windows", "Windows"),
+                Choice("linux", "Linux"),
+                Choice("macos", "macOS"),
+                Choice("custom_iso", "Custom ISO")
             ]
         ).execute()
-            
+    
+        version_choice = "latest"
+        architecture = "amd64"
+        de_choice = "xfce"
+        app_choice_str = ""
         custom_download_logic = ""
-        base_dir = os.path.join(os.getcwd(), repo_name)
-        
-        if source_choice == "2":
-            iso_url = inquirer.text(
-                message="Enter the direct HTTP/HTTPS URL to the ISO file:",
-                validate=lambda x: x.startswith("http")
-            ).execute().strip()
-            custom_download_logic = f'aria2c -x 16 -s 16 -k 1M -o custom.iso "{iso_url}"'
-            method = "url"
+        p2p_procs = None
+    
+        if os_choice != "custom_iso":
+            if os_choice == "macos":
+                version_choice = inquirer.select(
+                    message=f"Select version/distro for {os_choice}:",
+                    choices=os_choices[os_choice]
+                ).execute()
+            else:
+                version_choices = [Choice(v, v) for v in os_choices[os_choice]]
+                version_choice = inquirer.select(
+                    message=f"Select version/distro for {os_choice}:",
+                    choices=version_choices
+                ).execute()
+    
+            if os_choice == "linux":
+                architecture = inquirer.select(
+                    message="Select CPU architecture for Linux:",
+                    choices=[Choice("amd64", "amd64"), Choice("arm64", "arm64")]
+                ).execute()
+                
+                de_choices = [
+                    Choice("stock", "stock (Installs the distro's exact default GUI)"),
+                    Choice("xfce", "xfce"),
+                    Choice("gnome", "gnome"),
+                    Choice("kde", "kde"),
+                    Choice("i3", "i3"),
+                    Choice("cli", "cli (No GUI, SSH only. Extremely fast boot)")
+                ]
+                de_choice = inquirer.select(
+                    message="Select Desktop Environment / Window Manager:",
+                    choices=de_choices
+                ).execute()
+    
+                app_choices_list = [
+                    Choice("0", "Web Browser (Firefox)"),
+                    Choice("1", "CLI Editors (nano, vim)"),
+                    Choice("2", "Containerization (Docker)"),
+                    Choice("3", "Network/Security Tools (Nmap, Netcat, curl, wget)"),
+                    Choice("4", "Build Tools (git, gcc, make)")
+                ]
+                selected_apps = inquirer.checkbox(
+                    message="Select additional apps to pre-install (Space to select, Enter to confirm):",
+                    choices=app_choices_list
+                ).execute()
+                app_choice_str = ",".join(selected_apps) if selected_apps else ""
+    
+            elif os_choice == "macos":
+                de_choice = inquirer.select(
+                    message="Select interaction mode for macOS:",
+                    choices=[
+                        Choice("gui", "VNC Desktop (GUI) - Recommended for macos-13 (Intel)"),
+                        Choice("cli", "SSH Terminal Only (CLI) - Best for macos-latest (Apple Silicon)")
+                    ]
+                ).execute()
+                
+            elif os_choice == "windows":
+                de_choice = inquirer.select(
+                    message="Select interaction mode for Windows:",
+                    choices=[
+                        Choice("gui", "RDP Desktop (GUI) - Standard Windows Desktop"),
+                        Choice("cli", "SSH Terminal Only (CLI) - PowerShell/CMD over SSH")
+                    ]
+                ).execute()
+    
         else:
-            iso_path = inquirer.filepath(
-                message="Enter the absolute path to your local .iso file:",
-                validate=lambda x: os.path.isfile(x),
-                only_files=True
-            ).execute().strip()
-            
-            file_size_gb = os.path.getsize(iso_path) / (1024 ** 3)
-            print(f"ISO Size: {file_size_gb:.2f} GB")
-            
-            method = inquirer.select(
-                message="Select Transfer Method:",
+            # Custom ISO Logic
+            source_choice = inquirer.select(
+                message="Select Custom ISO source:",
                 choices=[
-                    Choice("1", "GitHub Releases (Cloud) - Automatically uploads and runs autonomously."),
-                    Choice("2", "Peer-to-Peer (Local Stream) - Streams directly from your PC (requires terminal to stay open).")
+                    Choice("1", "Local File (I have the ISO downloaded on my PC)"),
+                    Choice("2", "Direct URL (I have an HTTP/HTTPS link to the ISO)")
                 ]
             ).execute()
                 
-            if not os.path.exists(base_dir):
-                os.makedirs(base_dir, exist_ok=True)
-                
-            iso_name = os.path.basename(iso_path)
-            iso_dir = os.path.dirname(iso_path)
-
-            if method == "1":
-                tag = f"iso-{int(time.time())}"
-                if file_size_gb > 1.9:
-                    custom_download_logic = f'gh release download {tag} --pattern "*"\\ncat {iso_name}.part* > custom.iso'
-                    # Upload logic will happen AFTER git push
-                else:
-                    custom_download_logic = f'gh release download {tag} -p "{iso_name}"\\nmv "{iso_name}" custom.iso'
+            custom_download_logic = ""
+            base_dir = os.path.join(os.getcwd(), repo_name)
+            
+            if source_choice == "2":
+                iso_url = inquirer.text(
+                    message="Enter the direct HTTP/HTTPS URL to the ISO file:",
+                    validate=lambda x: x.startswith("http")
+                ).execute().strip()
+                custom_download_logic = f'aria2c -x 16 -s 16 -k 1M -o custom.iso "{iso_url}"'
+                method = "url"
             else:
-                http_proc, pinggy_proc, p2p_url = start_p2p_server(iso_dir, base_dir)
-                p2p_procs = (http_proc, pinggy_proc)
-                custom_download_logic = f'wget "{p2p_url}/{iso_name}" -O custom.iso'
-
-    print("\\n[1/4] Creating local directory structure...")
-    base_dir = os.path.join(os.getcwd(), repo_name)
-    if os.path.exists(base_dir) and not (os_choice == "custom_iso" and method == "1"):
-        shutil.rmtree(base_dir)
-    os.makedirs(base_dir, exist_ok=True)
+                iso_path = inquirer.filepath(
+                    message="Enter the absolute path to your local .iso file:",
+                    validate=lambda x: os.path.isfile(x),
+                    only_files=True
+                ).execute().strip()
+                
+                file_size_gb = os.path.getsize(iso_path) / (1024 ** 3)
+                print(f"ISO Size: {file_size_gb:.2f} GB")
+                
+                method = inquirer.select(
+                    message="Select Transfer Method:",
+                    choices=[
+                        Choice("1", "GitHub Releases (Cloud) - Automatically uploads and runs autonomously."),
+                        Choice("2", "Peer-to-Peer (Local Stream) - Streams directly from your PC (requires terminal to stay open).")
+                    ]
+                ).execute()
+                    
+                if not os.path.exists(base_dir):
+                    os.makedirs(base_dir, exist_ok=True)
+                    
+                iso_name = os.path.basename(iso_path)
+                iso_dir = os.path.dirname(iso_path)
+    
+                if method == "1":
+                    tag = f"iso-{int(time.time())}"
+                    if file_size_gb > 1.9:
+                        custom_download_logic = f'gh release download {tag} --pattern "*"\\ncat {iso_name}.part* > custom.iso'
+                        # Upload logic will happen AFTER git push
+                    else:
+                        custom_download_logic = f'gh release download {tag} -p "{iso_name}"\\nmv "{iso_name}" custom.iso'
+                else:
+                    http_proc, pinggy_proc, p2p_url = start_p2p_server(iso_dir, base_dir)
+                    p2p_procs = (http_proc, pinggy_proc)
+                    custom_download_logic = f'wget "{p2p_url}/{iso_name}" -O custom.iso'
+    
+        print("\\n[1/4] Creating local directory structure...")
+        base_dir = os.path.join(os.getcwd(), repo_name)
+        if os.path.exists(base_dir) and not (os_choice == "custom_iso" and method == "1"):
+            shutil.rmtree(base_dir)
+        os.makedirs(base_dir, exist_ok=True)
+            
+        workflow_dir = os.path.join(base_dir, ".github", "workflows")
+        os.makedirs(workflow_dir, exist_ok=True)
         
-    workflow_dir = os.path.join(base_dir, ".github", "workflows")
-    os.makedirs(workflow_dir, exist_ok=True)
-    
-    
+        
     if not loaded_profile:
         tunnel = inquirer.select(
             message="Select Tunneling Provider:",
