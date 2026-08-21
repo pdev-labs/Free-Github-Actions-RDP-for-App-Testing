@@ -218,3 +218,14 @@ Because GitHub Actions runners are behind strict inbound firewalls, we utilize r
 
 ## ⚖️ License
 This project is licensed under the **GNU General Public License v3.0** (GPLv3). See the `LICENSE` file for full details.
+
+---
+
+## 💬 Feedback & Support
+
+We are constantly improving the framework! If you encounter any bugs, have a brilliant idea for a new feature, or want to suggest improvements (like more OS distributions or desktop environments), we want to hear from you!
+
+Please report all issues and feature requests by opening an **Issue** on the official repository:
+👉 [Submit an Issue or Feature Request here](https://github.com/pdev-labs/Free-Github-Actions-RDP-for-App-Testing/issues)
+
+If you'd like to contribute directly to the code, feel free to fork the repository and submit a Pull Request!
