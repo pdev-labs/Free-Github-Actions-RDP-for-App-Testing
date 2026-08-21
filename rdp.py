@@ -952,7 +952,7 @@ def main():
                     p2p_procs = (http_proc, pinggy_proc)
                     custom_download_logic = f'wget "{p2p_url}/{iso_name}" -O custom.iso'
     
-        print("\\n[1/4] Creating local directory structure...")
+        print("\n[1/4] Creating local directory structure...")
         base_dir = os.path.join(os.getcwd(), repo_name)
         if os.path.exists(base_dir) and not (os_choice == "custom_iso" and method == "1"):
             shutil.rmtree(base_dir)
@@ -1064,7 +1064,7 @@ def main():
     
     print(f"Repository URL: https://github.com/{gh_user}/{repo_name}/actions")
     
-    print("\\nTriggering the GitHub Action workflow automatically...")
+    print("\nTriggering the GitHub Action workflow automatically...")
     try:
         subprocess.run(["gh", "workflow", "run", "rdp.yml", "-R", f"{gh_user}/{repo_name}"], cwd=base_dir, check=True)
         print("Workflow triggered successfully!")
@@ -1078,12 +1078,19 @@ def main():
     print(f"Click the Repository URL above, go to your running workflow, and click 'Get connection URL'.")
     print(f"   - For Linux/Windows: Use an RDP client to connect.")
     print(f"   - For macOS/Custom ISO: Use a VNC client to connect.")
-    print(f"   * NOTE: The Pinggy free tier will disconnect after 60 minutes.")
+    if tunnel == "pinggy":
+        print(f"   * NOTE: The Pinggy free tier will disconnect after 60 minutes.")
+    elif tunnel == "ngrok":
+        print(f"   * NOTE: The Ngrok tunnel will persist for up to 6 hours.")
+    elif tunnel == "cloudflare":
+        print(f"   * NOTE: Cloudflare tunnels are infinite. Use 'cloudflared access' locally to connect.")
+    elif tunnel == "tailscale":
+        print(f"   * NOTE: Tailscale VPN is active. Connect using the 100.x.x.x IP Address.")
 
     # Block terminal if P2P is active
     if p2p_procs:
         http_proc, pinggy_proc = p2p_procs
-        print("\\n" + "="*60)
+        print("\n" + "="*60)
         print("!!! WARNING: P2P STREAMING ACTIVE !!!")
         print("DO NOT CLOSE THIS TERMINAL.")
         print("Your local machine is currently serving the ISO file.")
