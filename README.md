@@ -35,26 +35,45 @@ A powerful Python automation script that dynamically provisions fully interactiv
 
 This script runs on Python and requires Git and the GitHub CLI (`gh`). Below are the installation instructions for your specific host operating system.
 
-### 🐧 Linux (Debian/Ubuntu/Arch/Fedora)
-```bash
-# 1. Install Dependencies
-# Debian/Ubuntu:
-sudo apt update && sudo apt install python3 python3-pip git gh
-# Arch Linux:
-sudo pacman -S python python-pip git github-cli
-# Fedora:
-sudo dnf install python3 python3-pip git gh
+### 🐧 Linux
 
-# 2. Clone the repository
+Choose your distribution below to see the exact commands to install dependencies, clone the repo, and start the script!
+
+<details>
+<summary><b>Debian / Ubuntu</b> (Click to expand)</summary>
+
+```bash
+sudo apt update && sudo apt install python3 python3-pip git gh -y
 git clone https://github.com/pdev-labs/Free-Github-Actions-RDP-for-App-Testing.git
 cd Free-Github-Actions-RDP-for-App-Testing
-
-# 3. Install Python requirements
 pip install -r requirements.txt
-
-# 4. Authenticate GitHub CLI
 gh auth login
 ```
+</details>
+
+<details>
+<summary><b>Arch Linux / Manjaro</b> (Click to expand)</summary>
+
+```bash
+sudo pacman -S python python-pip git github-cli --noconfirm
+git clone https://github.com/pdev-labs/Free-Github-Actions-RDP-for-App-Testing.git
+cd Free-Github-Actions-RDP-for-App-Testing
+pip install -r requirements.txt
+gh auth login
+```
+</details>
+
+<details>
+<summary><b>Fedora</b> (Click to expand)</summary>
+
+```bash
+sudo dnf install python3 python3-pip git gh -y
+git clone https://github.com/pdev-labs/Free-Github-Actions-RDP-for-App-Testing.git
+cd Free-Github-Actions-RDP-for-App-Testing
+pip install -r requirements.txt
+gh auth login
+```
+</details>
 
 ### 🍎 macOS
 ```bash
