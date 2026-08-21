@@ -229,11 +229,37 @@ jobs:
             PKG_PACMAN="$PKG_PACMAN git base-devel"
             PKG_DNF="$PKG_DNF git @development-tools"
         fi
+        if [[ "$APP_CHOICE" == *"5"* ]]; then
+            PKG_APT="$PKG_APT nmap wireshark tshark metasploit-framework"
+            PKG_PACMAN="$PKG_PACMAN nmap wireshark-cli metasploit"
+            PKG_DNF="$PKG_DNF nmap wireshark metasploit"
+        fi
+        if [[ "$APP_CHOICE" == *"6"* ]]; then
+            PKG_APT="$PKG_APT nodejs npm python3-pip docker.io apt-transport-https software-properties-common"
+            PKG_PACMAN="$PKG_PACMAN nodejs npm python-pip docker code"
+            PKG_DNF="$PKG_DNF nodejs npm python3-pip docker"
+        fi
+        if [[ "$APP_CHOICE" == *"7"* ]]; then
+            PKG_APT="$PKG_APT default-jdk"
+            PKG_PACMAN="$PKG_PACMAN jdk-openjdk"
+            PKG_DNF="$PKG_DNF java-latest-openjdk"
+        fi
 
         echo "Detecting package manager and installing packages..."
         if command -v apt-get >/dev/null; then
             apt-get update
-            apt-get install -y sudo openssh-server openssh-client passwd $PKG_APT
+            apt-get install -y sudo openssh-server openssh-client passwd curl wget gpg $PKG_APT
+            if [[ "$APP_CHOICE" == *"6"* ]]; then
+                wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
+                install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
+                sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
+                rm -f packages.microsoft.gpg
+                apt-get update && apt-get install -y code
+            fi
+            if [[ "$APP_CHOICE" == *"7"* ]]; then
+                add-apt-repository ppa:maarten-fonville/android-studio -y
+                apt-get update && apt-get install -y android-studio
+            fi
             if [ "$DE_CHOICE" != "cli" ]; then
                 apt-get install -y xrdp dbus-x11 xorgxrdp
             fi
@@ -614,6 +640,39 @@ def inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice='linux', 
         template = template.replace("Pinggy tunnel", "Ngrok tunnel")
         return template
 
+    if tunnel == "cloudflare":
+        cf_cmd = f"""wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+        chmod +x cloudflared-linux-amd64
+        ./cloudflared-linux-amd64 tunnel --url tcp://localhost:{port} > cloudflared.log 2>&1 &"""
+        template = re.sub(r"ssh -T -p 443 -R0:localhost:[0-9]+ -o StrictHostKeyChecking=no.*&", cf_cmd, template)
+        
+        url_extract = "URL=$(grep -o 'https://.*\.trycloudflare\.com' cloudflared.log | head -n 1)"
+        template = re.sub(r'URL=\$\(grep -o "tcp://\.\*" .* \| head -n 1\)', url_extract, template)
+        
+        # Replace messages
+        template = template.replace("Connect using this command: env TERM=xterm-256color ssh -p $PORT runneradmin@$HOST", "Connect using: cloudflared access ssh --hostname ${URL#https://}")
+        template = template.replace("Connect using this address: ${URL#tcp://}", "Connect using local port forward: cloudflared access tcp --hostname ${URL#https://} --url 127.0.0.1:{port}")
+        template = template.replace("Pinggy free tier is limited to 60 minutes.", "Cloudflare tunnel is infinite. Make sure you have 'cloudflared' installed locally to connect.")
+        template = template.replace("Pinggy tunnel", "Cloudflare tunnel")
+        template = template.replace("pinggy.log", "cloudflared.log")
+        return template
+
+    if tunnel == "tailscale":
+        ts_cmd = f"""curl -fsSL https://tailscale.com/install.sh | sh
+        sudo tailscale up --authkey {ngrok_token}
+        IP=\$(tailscale ip -4)"""
+        template = re.sub(r"ssh -T -p 443 -R0:localhost:[0-9]+ -o StrictHostKeyChecking=no.*&", ts_cmd, template)
+        
+        template = re.sub(r'URL=\$\(grep -o "tcp://\.\*" .* \| head -n 1\)', "URL=$IP", template)
+        
+        # Replace messages
+        template = template.replace("Connect using this command: env TERM=xterm-256color ssh -p $PORT runneradmin@$HOST", "Connect using: env TERM=xterm-256color ssh runneradmin@$URL")
+        template = template.replace("Connect using this address: ${URL#tcp://}", "Connect using this address: $URL")
+        template = template.replace("Pinggy free tier is limited to 60 minutes.", "Tailscale VPN tunnel is active securely.")
+        template = template.replace("Pinggy tunnel", "Tailscale VPN")
+        template = template.replace("pinggy.log", "tailscale_install.log")
+        return template
+
 def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice="xfce", app_choice_str="", custom_download_logic="", pub_key="", tunnel="pinggy", ngrok_token=""):
     if os_choice == "windows":
         if de_choice == "cli":
@@ -798,7 +857,10 @@ def main():
                     Choice("1", "CLI Editors (nano, vim)"),
                     Choice("2", "Containerization (Docker)"),
                     Choice("3", "Network/Security Tools (Nmap, Netcat, curl, wget)"),
-                    Choice("4", "Build Tools (git, gcc, make)")
+                    Choice("4", "Build Tools (git, gcc, make)"),
+                    Choice("5", "DevBox: Hacker (Kali Tools, Metasploit, Wireshark)"),
+                    Choice("6", "DevBox: Coder (VSCode, Node.js, Python, Docker)"),
+                    Choice("7", "DevBox: Android (Android Studio, SDKs)")
                 ]
                 selected_apps = inquirer.checkbox(
                     message="Select additional apps to pre-install (Space to select, Enter to confirm):",
@@ -895,7 +957,9 @@ def main():
             message="Select Tunneling Provider:",
             choices=[
                 Choice("pinggy", "Pinggy (Free, No Auth, 60-min limit)"),
-                Choice("ngrok", "Ngrok (Free Auth Token Required, Persistent 6-hour limit)")
+                Choice("ngrok", "Ngrok (Free Auth Token Required, Persistent 6-hour limit)"),
+                Choice("cloudflare", "Cloudflare Tunnels (Free, No Auth, Infinite Time, Requires local cloudflared)"),
+                Choice("tailscale", "Tailscale VPN (Free, Auth Key Required, Infinite Time, Secure Private Network)")
             ]
         ).execute()
         
@@ -904,6 +968,25 @@ def main():
             ngrok_token = inquirer.secret(
                 message="Enter your Ngrok Auth Token:"
             ).execute().strip()
+        elif tunnel == "tailscale":
+            key_choice = inquirer.select(
+                message="How do you want to handle your Tailscale Auth Key?",
+                choices=[
+                    Choice("secret", "Set as a secure GitHub Secret (Recommended)"),
+                    Choice("direct", "Inject directly into the workflow file (Less secure)")
+                ]
+            ).execute()
+            
+            ts_key = inquirer.secret(
+                message="Enter your Tailscale Auth Key:"
+            ).execute().strip()
+            
+            if key_choice == "secret":
+                print("\n[+] Setting Tailscale Auth Key as a GitHub Secret...")
+                subprocess.run(["gh", "secret", "set", "TAILSCALE_AUTHKEY", "--body", ts_key], check=True)
+                ngrok_token = "${{ secrets.TAILSCALE_AUTHKEY }}"
+            else:
+                ngrok_token = ts_key
     
     pub_key = ""
     if os_choice == "macos" and de_choice == "cli":
