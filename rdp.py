@@ -102,6 +102,7 @@ jobs:
         Set-Service -Name Audiosrv -StartupType 'Automatic'
         Start-Service Audiosrv
         reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services" /v fAllowAudioPlayback /t REG_DWORD /d 1 /f
+        reg add "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp" /v fDisableAudioCapture /t REG_DWORD /d 0 /f
         net user runneradmin ThePassword123!
     - name: Start Pinggy tunnel and get connection URL
       shell: bash
