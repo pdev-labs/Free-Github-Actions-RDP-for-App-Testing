@@ -558,7 +558,7 @@ import re
 
 # Previous duplicate block removed.
 
-def inject_tunnel_logic(template, tunnel, ngrok_token, port):
+def inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice='linux', de_choice='xfce'):
     if tunnel == "pinggy":
         # Inject the 57-minute keepalive loop for Pinggy
         # 1. Wrap the ssh command in a while loop
@@ -567,10 +567,26 @@ def inject_tunnel_logic(template, tunnel, ngrok_token, port):
             r"\1while true; do\n\1    \2\n\1    SSH_PID=$!", 
             template
         )
-        # 2. Replace the static 6-hour sleep with a 57-minute sleep and kill command
+                # OS-Specific Popup Logic
+        popup_cmd = ""
+        if de_choice != 'cli':
+            if os_choice == 'windows':
+                popup_cmd = "msg * \"WARNING: Pinggy connection dropping in 2 minutes! Check GitHub Actions for the new URL!\" || true"
+            elif os_choice == 'macos':
+                popup_cmd = "osascript -e 'display notification \"Check GitHub Actions for the new URL!\" with title \"Pinggy Drop Warning (2 Mins)\"' || true"
+            elif os_choice == 'linux':
+                popup_cmd = "notify-send \"Pinggy Drop Warning\" \"Connection dropping in 2 mins! Check GitHub Actions!\" || true"
+                
+        warning_block = f"""sleep 3300
+            echo \"[$(date)] 55 minutes reached. Firing OS warning popup...\"
+            {popup_cmd}
+            sleep 120
+            echo \"[$(date)] 57 minutes reached. Restarting Pinggy tunnel to bypass 60-min limit...\"
+            kill $SSH_PID"""
+            
         template = template.replace(
             "sleep 21600",
-            "sleep 3420\n            echo \"[$(date)] 57 minutes reached. Restarting Pinggy tunnel to bypass 60-min limit...\"\n            kill $SSH_PID"
+            warning_block
         )
         # 3. Append the done closure at the end of the script (after 'fi')
         template = re.sub(
@@ -600,22 +616,22 @@ def inject_tunnel_logic(template, tunnel, ngrok_token, port):
 def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice="xfce", app_choice_str="", custom_download_logic="", pub_key="", tunnel="pinggy", ngrok_token=""):
     if os_choice == "windows":
         if de_choice == "cli":
-            return inject_tunnel_logic(WINDOWS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 22)
+            return inject_tunnel_logic(WINDOWS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 22, os_choice, de_choice)
         else:
-            return inject_tunnel_logic(WINDOWS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 3389)
+            return inject_tunnel_logic(WINDOWS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 3389, os_choice, de_choice)
     elif os_choice == "linux":
         qemu = ""
         if architecture != "amd64":
             qemu = "\\n    - name: Set up QEMU for multi-arch support\\n      uses: docker/setup-qemu-action@v3"
         port = 22 if de_choice == "cli" else 3389
-        return inject_tunnel_logic(LINUX_WORKFLOW_TEMPLATE.replace("{distro}", version_choice).replace("{architecture}", architecture).replace("{qemu_setup}", qemu).replace("{de_choice}", de_choice).replace("{app_choice_str}", app_choice_str), tunnel, ngrok_token, port)
+        return inject_tunnel_logic(LINUX_WORKFLOW_TEMPLATE.replace("{distro}", version_choice).replace("{architecture}", architecture).replace("{qemu_setup}", qemu).replace("{de_choice}", de_choice).replace("{app_choice_str}", app_choice_str), tunnel, ngrok_token, port, os_choice, de_choice)
     elif os_choice == "macos":
         if de_choice == "cli":
-            return inject_tunnel_logic(MACOS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice).replace("{pub_key}", pub_key), tunnel, ngrok_token, 22)
+            return inject_tunnel_logic(MACOS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice).replace("{pub_key}", pub_key), tunnel, ngrok_token, 22, os_choice, de_choice)
         else:
-            return inject_tunnel_logic(MACOS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 5900)
+            return inject_tunnel_logic(MACOS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 5900, os_choice, de_choice)
     elif os_choice == "custom_iso":
-        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", custom_download_logic), tunnel, ngrok_token, 5900)
+        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", custom_download_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
     else:
         raise ValueError(f"Unknown OS choice: {os_choice}")
 
