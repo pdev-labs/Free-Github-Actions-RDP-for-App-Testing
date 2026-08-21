@@ -214,14 +214,35 @@ This script forcefully patches the PAM configuration inside the runtime containe
 ### macOS Authentication Bypass (Apple Silicon)
 Apple has locked down headless authentication on modern architectures via System Integrity Protection (SIP) and SecureToken. This script automatically bypasses `sysadminctl` password failures by generating an ED25519 SSH key pair locally and injecting the public key into the runner's `authorized_keys`, granting you instantaneous passwordless access.
 
-### Network Tunneling
-Because GitHub Actions runners are behind strict inbound firewalls, we utilize reverse SSH tunneling via Pinggy to expose the `3389` (RDP), `22` (SSH), or `5900` (VNC) ports back to the public internet securely.
+### Network Tunneling Options
+Because GitHub Actions runners are behind strict inbound firewalls, we utilize reverse tunnels to expose the `3389` (RDP), `22` (SSH), or `5900` (VNC) ports back to the public internet securely.
 
-### Pinggy 60-Minute Bypass & OS Warning System
-Pinggy's free tier has a hard limit of 60 minutes per tunnel. To prevent unexpected data loss, this framework incorporates a completely autonomous bypass and warning architecture:
-- **The Warning**: At precisely the 55-minute mark, the script aggressively injects a native UI warning directly onto your cloud desktop (using `osascript` on macOS, `notify-send` on Linux, and a direct `wtsapi32.dll` C# payload on Windows).
-- **The Bypass**: At the 57-minute mark, the script autonomously kills the active Pinggy tunnel and immediately restarts a brand-new one to bypass the 60-minute limit.
-- **Session Persistence**: Because the tunnel engine is fully decoupled from the actual Desktop Environment (XFCE/GNOME/Windows), **your session remains 100% active in the background**. Any open Chrome tabs, running scripts, or downloading files will continue uninterrupted! Just check the GitHub Actions logs for the newly generated URL, reconnect, and resume exactly where you left off.
+This framework supports 4 different tunneling providers. When you run `rdp.py`, you will be prompted to choose one:
+
+#### 1. Pinggy (Default)
+- **Requirements:** None. Completely free and anonymous.
+- **Connection Method:** Gives you a public URL (e.g., `tcp.a.pinggy.io:12345`). Just paste this into your RDP/VNC client.
+- **Limitations:** Hard limit of 60 minutes per session.
+- **The 60-Minute Bypass System:** To prevent data loss, the script automatically injects a native UI warning directly onto your cloud desktop at the 55-minute mark. At the 57-minute mark, the script autonomously kills the active Pinggy tunnel and immediately restarts a brand-new one to bypass the limit. Because the tunnel engine is fully decoupled from the Desktop Environment, **your session remains 100% active in the background**. Any open Chrome tabs or running scripts will continue uninterrupted! Just check the GitHub Actions logs for the new URL, reconnect, and resume.
+
+#### 2. Ngrok
+- **Requirements:** A free Ngrok account and Auth Token.
+- **How to get:** Sign up at [ngrok.com](https://ngrok.com/), navigate to `Your Authtoken`, and paste it into the script prompt.
+- **Connection Method:** Gives you a public URL (e.g., `0.tcp.ngrok.io:12345`). Just paste this into your client.
+- **Limitations:** Uninterrupted persistent sessions for up to **6 hours** (the maximum lifespan of a GitHub Actions runner).
+
+#### 3. Cloudflare Tunnels (TryCloudflare)
+- **Requirements:** You must have the `cloudflared` binary installed on your local computer to connect.
+- **How to get:** Download `cloudflared` from the [official Cloudflare GitHub](https://github.com/cloudflare/cloudflared/releases).
+- **Connection Method:** You will be given a URL like `https://random-words.trycloudflare.com`. Run `cloudflared access tcp --hostname random-words.trycloudflare.com --url 127.0.0.1:3389` locally. Then point your RDP/VNC client to `localhost:3389`.
+- **Limitations:** Completely free, no auth token required, and infinite time limits!
+
+#### 4. Tailscale VPN
+- **Requirements:** A free Tailscale account and an Auth Key.
+- **How to get:** Sign up at [tailscale.com](https://tailscale.com/). Go to Settings -> Keys -> Generate Auth Key (make it reusable/ephemeral).
+- **Security:** The script will ask if you want to securely save this key as a GitHub Secret (`gh secret set`) or inject it directly. GitHub Secrets is highly recommended.
+- **Connection Method:** The GitHub Actions runner joins your private Tailnet VPN. You will be given a secure internal IP (e.g., `100.x.x.x`). You must have the Tailscale app running on your local computer. Just paste the 100.x IP directly into your RDP/VNC client!
+- **Limitations:** Extremely secure, low latency, completely free, and infinite time limit. No public URLs are ever exposed to the internet.
 
 ---
 
