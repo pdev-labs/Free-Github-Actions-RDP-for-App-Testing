@@ -221,6 +221,15 @@ This project is licensed under the **GNU General Public License v3.0** (GPLv3). 
 
 ---
 
+## 🛠️ Developer Guide (Build from Source)
+
+Want to hack on the core engine, add your own custom Linux distribution, or fix a bug? 
+We have a comprehensive **Local Development & Build from Source Guide**. 
+
+👉 **[Read the CONTRIBUTING.md Guide](CONTRIBUTING.md)** to learn how the architecture works, how to set up your local Python Virtual Environment, and how to submit Pull Requests!
+
+---
+
 ## 💬 Feedback & Support
 
 We are constantly improving the framework! If you encounter any bugs, have a brilliant idea for a new feature, or want to suggest improvements (like more OS distributions or desktop environments), we want to hear from you!
