@@ -156,6 +156,15 @@ gh auth login
 
 ---
 
+## Developer Guide (Build from Source)
+
+Want to hack on the core engine, add your own custom Linux distribution, or fix a bug?
+We have a comprehensive **Local Development & Build from Source Guide**.
+
+ **[Read the CONTRIBUTING.md Guide](CONTRIBUTING.md)** to learn how the architecture works, how to set up your local Python Virtual Environment, and how to submit Pull Requests!
+
+---
+
 ## Usage Guide
 
 Once installed and authenticated with `gh auth login`, simply launch the interactive provisioner:
@@ -217,22 +226,6 @@ We have moved all known bugs and fixes to a dedicated troubleshooting guide!
 
  **[Read the Troubleshooting Guide here](TROUBLESHOOTING.md)**
 
----
-
-## License
-This project is licensed under the **GNU General Public License v3.0** (GPLv3). See the `LICENSE` file for full details.
-
----
-
-## Developer Guide (Build from Source)
-
-Want to hack on the core engine, add your own custom Linux distribution, or fix a bug?
-We have a comprehensive **Local Development & Build from Source Guide**.
-
- **[Read the CONTRIBUTING.md Guide](CONTRIBUTING.md)** to learn how the architecture works, how to set up your local Python Virtual Environment, and how to submit Pull Requests!
-
----
-
 ## Feedback & Support
 
 We are constantly improving the framework! If you encounter any bugs, have a brilliant idea for a new feature, or want to suggest improvements (like more OS distributions or desktop environments), we want to hear from you!
@@ -241,3 +234,7 @@ Please report all issues and feature requests by opening an **Issue** on the off
  [Submit an Issue or Feature Request here](https://github.com/pdev-labs/Free-Github-Actions-RDP-for-App-Testing/issues)
 
 If you'd like to contribute directly to the code, feel free to fork the repository and submit a Pull Request!
+---
+
+## License
+This project is licensed under the **GNU General Public License v3.0** (GPLv3). See the `LICENSE` file for full details.
