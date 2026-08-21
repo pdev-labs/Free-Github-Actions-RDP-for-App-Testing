@@ -616,17 +616,17 @@ def inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice='linux', 
         if os_choice == 'windows':
             ngrok_cmd = f'''wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip
         unzip -q ngrok-v3-stable-windows-amd64.zip
-        ./ngrok.exe authtoken {ngrok_token}
+        ./ngrok.exe authtoken "{ngrok_token}"
         ./ngrok.exe tcp {port} --log=stdout > pinggy.log 2>&1 &'''
         elif os_choice == 'macos':
             ngrok_cmd = f'''wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-darwin-amd64.zip
         unzip -q ngrok-v3-stable-darwin-amd64.zip
-        ./ngrok authtoken {ngrok_token}
+        ./ngrok authtoken "{ngrok_token}"
         ./ngrok tcp {port} --log=stdout > pinggy.log 2>&1 &'''
         else:
             ngrok_cmd = f'''wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
         tar -xf ngrok-v3-stable-linux-amd64.tgz
-        ./ngrok authtoken {ngrok_token}
+        ./ngrok authtoken "{ngrok_token}"
         ./ngrok tcp {port} --log=stdout > pinggy.log 2>&1 &'''
         
         template = re.sub(r"ssh -T -p 443 -R0:localhost:[0-9]+ -o StrictHostKeyChecking=no.*&", ngrok_cmd, template)
@@ -660,17 +660,17 @@ def inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice='linux', 
     if tunnel == "tailscale":
         if os_choice == 'windows':
             ts_cmd = f'''choco install tailscale -y
-        /c/Program\\ Files/Tailscale/tailscale.exe up --authkey {ngrok_token}
+        /c/Program\\ Files/Tailscale/tailscale.exe up --authkey "{ngrok_token}"
         IP=$(/c/Program\\ Files/Tailscale/tailscale.exe ip -4)'''
         elif os_choice == 'macos':
             ts_cmd = f'''brew install tailscale
         sudo tailscaled > tailscale.log 2>&1 &
         sleep 5
-        sudo tailscale up --authkey {ngrok_token}
+        sudo tailscale up --authkey "{ngrok_token}"
         IP=$(tailscale ip -4)'''
         else:
             ts_cmd = f'''curl -fsSL https://tailscale.com/install.sh | sh
-        sudo tailscale up --authkey {ngrok_token}
+        sudo tailscale up --authkey "{ngrok_token}"
         IP=\\$(tailscale ip -4)'''
         
         template = re.sub(r"ssh -T -p 443 -R0:localhost:[0-9]+ -o StrictHostKeyChecking=no.*&", ts_cmd, template)
