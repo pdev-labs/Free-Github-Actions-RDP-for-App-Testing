@@ -206,13 +206,10 @@ Because GitHub Actions runners are behind strict inbound firewalls, we utilize r
 
 ## 🐛 Troubleshooting
 
-| Issue | Cause & Solution |
-| :--- | :--- |
-| **"User does not exist or cannot authenticate"** | (Linux RDP) Ensure you typed the password exactly as `ThePassword123!`. |
-| **Pinggy connection drops after 60 mins** | The free tier of Pinggy has a strict 60-minute session limit per tunnel. |
-| **Workflow Dispatch HTTP 422 Error** | The `gh` CLI was unable to trigger the workflow automatically. Go to your GitHub Repo -> Actions -> Run Workflow manually. |
-| **"unknown terminal type" on SSH login** | This script forces `TERM=xterm-256color`. If it persists, type `export TERM=xterm-256color` in the remote terminal. |
-| **Aria2c download seems stuck** | In GitHub Actions, `aria2c` disables live progress bars. Check the initial ETA. |
+Running into issues deploying your environment or connecting to the tunnel?
+We have moved all known bugs and fixes to a dedicated troubleshooting guide!
+
+👉 **[Read the Troubleshooting Guide here](TROUBLESHOOTING.md)**
 
 ---
 
