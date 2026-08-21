@@ -560,6 +560,24 @@ import re
 
 def inject_tunnel_logic(template, tunnel, ngrok_token, port):
     if tunnel == "pinggy":
+        # Inject the 57-minute keepalive loop for Pinggy
+        # 1. Wrap the ssh command in a while loop
+        template = re.sub(
+            r"([ \t]+)(ssh -T -p 443 -R0:localhost:[0-9]+ -o StrictHostKeyChecking=no.*&)", 
+            r"\1while true; do\n\1    \2\n\1    SSH_PID=$!", 
+            template
+        )
+        # 2. Replace the static 6-hour sleep with a 57-minute sleep and kill command
+        template = template.replace(
+            "sleep 21600",
+            "sleep 3420\n            echo \"[$(date)] 57 minutes reached. Restarting Pinggy tunnel to bypass 60-min limit...\"\n            kill $SSH_PID"
+        )
+        # 3. Append the done closure at the end of the script (after 'fi')
+        template = re.sub(
+            r"(exit 1\s*fi)", 
+            r"\1\n        sleep 2\n        done\n        sleep 21600", 
+            template
+        )
         return template
         
     if tunnel == "ngrok":
