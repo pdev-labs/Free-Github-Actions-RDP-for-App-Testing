@@ -572,7 +572,7 @@ def inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice='linux', 
         popup_cmd = ""
         if de_choice != 'cli':
             if os_choice == 'windows':
-                popup_cmd = "msg * \"WARNING: Pinggy connection dropping in 2 minutes! Check GitHub Actions for the new URL!\" || true"
+                popup_cmd = "powershell.exe -Command \\\"msg * 'WARNING: Pinggy connection dropping in 2 minutes! Check GitHub Actions for the new URL!'\\\" || true"
             elif os_choice == 'macos':
                 popup_cmd = "osascript -e 'display notification \"Check GitHub Actions for the new URL!\" with title \"Pinggy Drop Warning (2 Mins)\"' || true"
             elif os_choice == 'linux':
