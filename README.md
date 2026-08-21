@@ -75,6 +75,31 @@ gh auth login
 ```
 </details>
 
+<details>
+<summary><b>RHEL / CentOS / AlmaLinux</b> (Click to expand)</summary>
+
+```bash
+sudo yum install epel-release -y
+sudo yum install python3 python3-pip git gh -y
+git clone https://github.com/pdev-labs/Free-Github-Actions-RDP-for-App-Testing.git
+cd Free-Github-Actions-RDP-for-App-Testing
+pip install -r requirements.txt
+gh auth login
+```
+</details>
+
+<details>
+<summary><b>openSUSE</b> (Click to expand)</summary>
+
+```bash
+sudo zypper install python3 python3-pip git gh
+git clone https://github.com/pdev-labs/Free-Github-Actions-RDP-for-App-Testing.git
+cd Free-Github-Actions-RDP-for-App-Testing
+pip install -r requirements.txt
+gh auth login
+```
+</details>
+
 ### 🍎 macOS
 ```bash
 # 1. Install Homebrew (if not already installed)
