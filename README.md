@@ -1,26 +1,26 @@
-# GitHub Actions RDP & VNC Provisioner ☁️💻
+# GitHub Actions RDP & VNC Provisioner
 
 <div align="center">
-  <h3>Automated Cloud Desktop Environments inside GitHub Actions</h3>
+ <h3>Automated Cloud Desktop Environments inside GitHub Actions</h3>
 </div>
 
 > [!WARNING]
 > **EDUCATIONAL AND TESTING PURPOSES ONLY**
-> This script and the resulting environments are strictly intended for educational, CI/CD debugging, and temporary testing purposes. 
+> This script and the resulting environments are strictly intended for educational, CI/CD debugging, and temporary testing purposes.
 > Do **NOT** use this tool to mine cryptocurrency, host illegal content, perform denial-of-service attacks, or violate GitHub's Terms of Service. Doing so will likely result in an immediate and permanent ban of your GitHub account. You are solely responsible for how you use this tool.
 
 A powerful Python automation script that dynamically provisions fully interactive, GUI-enabled Desktop environments (Linux, Windows, macOS, and custom ISOs) directly inside GitHub Actions runners. It utilizes [Pinggy](https://pinggy.io/) to securely tunnel the RDP/VNC/SSH connection out of the isolated GitHub infrastructure directly to your local machine.
 
 ---
 
-## 🚀 Key Features
+## Key Features
 - **Multi-OS Support**: Native provisioning across Linux, Windows, and macOS host runners.
 - **Modern Interactive CLI (TUI)**: Beautiful, intuitive interactive terminal menus powered by `InquirerPy` and `rich`.
 - **Seamless SSH Key Injection**: Bypasses macOS SecureToken limitations by automatically generating SSH key pairs locally and injecting them securely into the cloud runner for instant, passwordless root terminal access!
 - **Terminal Emulator Compatibility**: Automatically forces universal terminal formatting over SSH (`TERM=xterm-256color`), guaranteeing flawless compatibility for users running Kitty, Alacritty, or custom configurations.
-- **Custom ISO Booting (QEMU Nested Virtualization)**: Boot **ANY** operating system (PearOS, Windows PE, BSD, custom Linux spins) from a raw `.iso` file inside the GitHub Action! 
-  - **Auto File-Splitting**: Intelligently handles ISOs larger than GitHub's 2GB limit by splitting, uploading, and merging chunks.
-  - **P2P Local Streaming**: Stream an ISO directly from your local hard drive into the cloud runner without uploading it!
+- **Custom ISO Booting (QEMU Nested Virtualization)**: Boot **ANY** operating system (PearOS, Windows PE, BSD, custom Linux spins) from a raw `.iso` file inside the GitHub Action!
+ - **Auto File-Splitting**: Intelligently handles ISOs larger than GitHub's 2GB limit by splitting, uploading, and merging chunks.
+ - **P2P Local Streaming**: Stream an ISO directly from your local hard drive into the cloud runner without uploading it!
 - **Extensive Linux Distributions**: Choose from Ubuntu, Debian, Kali Linux, Arch Linux, Fedora, Linux Mint, and Manjaro.
 - **Desktop Environments**: Instantly spin up XFCE, GNOME, KDE Plasma, i3wm, or run in headless CLI-only mode.
 - **Automatic PAM Patching**: Bypasses strict Docker container PAM (Pluggable Authentication Module) restrictions so that `xrdp` authentication works flawlessly out-of-the-box.
@@ -31,11 +31,11 @@ A powerful Python automation script that dynamically provisions fully interactiv
 
 ---
 
-## 🛠️ Installation Guide
+## Installation Guide
 
 This script runs on Python and requires Git and the GitHub CLI (`gh`). Below are the installation instructions for your specific host operating system.
 
-### 🐧 Linux
+### Linux
 
 Choose your distribution below to see the exact commands to install dependencies, clone the repo, and start the script!
 
@@ -100,7 +100,7 @@ gh auth login
 ```
 </details>
 
-### 🍎 macOS
+### macOS
 ```bash
 # 1. Install Homebrew (if not already installed)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -119,7 +119,7 @@ pip3 install -r requirements.txt
 gh auth login
 ```
 
-### 🪟 Windows
+### Windows
 ```powershell
 # 1. Install Winget (if not installed, available via Microsoft Store)
 # 2. Install Dependencies via PowerShell (Run as Administrator)
@@ -136,7 +136,7 @@ pip install -r requirements.txt
 gh auth login
 ```
 
-### 📱 Termux (Android)
+### Termux (Android)
 *Yes, you can deploy cloud desktops directly from your phone!*
 ```bash
 # 1. Update and Install Dependencies
@@ -156,7 +156,7 @@ gh auth login
 
 ---
 
-## 📖 Usage Guide
+## Usage Guide
 
 Once installed and authenticated with `gh auth login`, simply launch the interactive provisioner:
 
@@ -168,10 +168,10 @@ python rdp.py
 The script will ask you for a repository name (e.g., `my-cloud-desktop`). It will autonomously create this private repository on your GitHub account and prepare the workflow templates.
 
 ### 2. Standard OS Provisioning (Linux, Windows, macOS)
-1. Select `linux`, `windows`, or `macos`. 
+1. Select `linux`, `windows`, or `macos`.
 2. Choose your interaction mode:
-   - **GUI (RDP/VNC)**: Full graphical desktop experience.
-   - **CLI (SSH)**: Blazing-fast headless terminal access (ideal for macOS M1/latest or Windows PowerShell).
+  - **GUI (RDP/VNC)**: Full graphical desktop experience.
+  - **CLI (SSH)**: Blazing-fast headless terminal access (ideal for macOS M1/latest or Windows PowerShell).
 3. If you select Linux, choose your CPU architecture (`amd64` or `arm64`), Distribution, Desktop Environment, and pre-installed toolkits!
 4. The script will push the code to your GitHub repo and trigger the workflow automatically.
 5. Check your terminal output or your GitHub Actions logs for the connection credentials and `pinggy.link` URL!
@@ -181,16 +181,16 @@ The `custom_iso` feature bypasses standard host operating systems and boots your
 
 1. **Select `custom_iso`** from the OS menu.
 2. **Choose ISO Source**:
-   - **Direct Download URL**: Provide an HTTP/HTTPS link to the `.iso`. The Action will download it directly at gigabit speeds via multi-threaded `aria2c`.
-   - **Local File**: Enter the path to an `.iso` file on your computer.
+  - **Direct Download URL**: Provide an HTTP/HTTPS link to the `.iso`. The Action will download it directly at gigabit speeds via multi-threaded `aria2c`.
+  - **Local File**: Enter the path to an `.iso` file on your computer.
 3. **Choose Transfer Method (Local File Only)**:
-   - **Cloud Upload**: Automatically slices and uploads your ISO to a hidden GitHub Release.
-   - **P2P Local Stream**: Starts a local web server and streams the ISO straight from your hard drive into the cloud! (Keep your terminal open).
+  - **Cloud Upload**: Automatically slices and uploads your ISO to a hidden GitHub Release.
+  - **P2P Local Stream**: Starts a local web server and streams the ISO straight from your hard drive into the cloud! (Keep your terminal open).
 4. **Connect via VNC**: Check the Actions logs for the Pinggy VNC URL and connect using RealVNC, TigerVNC, or macOS Screen Sharing.
 
 ---
 
-## 🏗️ Architecture & Technical Details
+## Architecture & Technical Details
 
 ### GitHub Actions Isolation & PAM Constraints
 GitHub Actions Linux runners execute jobs inside isolated Docker containers. This causes severe issues with `xrdp-sesman` because standard Linux distributions expect kernel audit modules (`pam_loginuid.so`) or direct `/etc/shadow` access, which are heavily restricted.
@@ -210,34 +210,34 @@ Pinggy's free tier has a hard limit of 60 minutes per tunnel. To prevent unexpec
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 Running into issues deploying your environment or connecting to the tunnel?
 We have moved all known bugs and fixes to a dedicated troubleshooting guide!
 
-👉 **[Read the Troubleshooting Guide here](TROUBLESHOOTING.md)**
+ **[Read the Troubleshooting Guide here](TROUBLESHOOTING.md)**
 
 ---
 
-## ⚖️ License
+## License
 This project is licensed under the **GNU General Public License v3.0** (GPLv3). See the `LICENSE` file for full details.
 
 ---
 
-## 🛠️ Developer Guide (Build from Source)
+## Developer Guide (Build from Source)
 
-Want to hack on the core engine, add your own custom Linux distribution, or fix a bug? 
-We have a comprehensive **Local Development & Build from Source Guide**. 
+Want to hack on the core engine, add your own custom Linux distribution, or fix a bug?
+We have a comprehensive **Local Development & Build from Source Guide**.
 
-👉 **[Read the CONTRIBUTING.md Guide](CONTRIBUTING.md)** to learn how the architecture works, how to set up your local Python Virtual Environment, and how to submit Pull Requests!
+ **[Read the CONTRIBUTING.md Guide](CONTRIBUTING.md)** to learn how the architecture works, how to set up your local Python Virtual Environment, and how to submit Pull Requests!
 
 ---
 
-## 💬 Feedback & Support
+## Feedback & Support
 
 We are constantly improving the framework! If you encounter any bugs, have a brilliant idea for a new feature, or want to suggest improvements (like more OS distributions or desktop environments), we want to hear from you!
 
 Please report all issues and feature requests by opening an **Issue** on the official repository:
-👉 [Submit an Issue or Feature Request here](https://github.com/pdev-labs/Free-Github-Actions-RDP-for-App-Testing/issues)
+ [Submit an Issue or Feature Request here](https://github.com/pdev-labs/Free-Github-Actions-RDP-for-App-Testing/issues)
 
 If you'd like to contribute directly to the code, feel free to fork the repository and submit a Pull Request!
