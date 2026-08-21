@@ -197,6 +197,12 @@ The `custom_iso` feature bypasses standard host operating systems and boots your
   - **P2P Local Stream**: Starts a local web server and streams the ISO straight from your hard drive into the cloud! (Keep your terminal open).
 4. **Connect via VNC**: Check the Actions logs for the Pinggy VNC URL and connect using RealVNC, TigerVNC, or macOS Screen Sharing.
 
+### 4. Canceling Active Workflows
+If you have multiple cloud desktops running and you want to instantly terminate all of them to save GitHub Actions minutes, you can run this command in your terminal inside the repository folder:
+```bash
+gh run list --json databaseId -q '.[].databaseId' | xargs -I{} gh run cancel {}
+```
+
 ---
 
 ## Architecture & Technical Details
