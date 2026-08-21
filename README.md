@@ -202,6 +202,12 @@ Apple has locked down headless authentication on modern architectures via System
 ### Network Tunneling
 Because GitHub Actions runners are behind strict inbound firewalls, we utilize reverse SSH tunneling via Pinggy to expose the `3389` (RDP), `22` (SSH), or `5900` (VNC) ports back to the public internet securely.
 
+### Pinggy 60-Minute Bypass & OS Warning System
+Pinggy's free tier has a hard limit of 60 minutes per tunnel. To prevent unexpected data loss, this framework incorporates a completely autonomous bypass and warning architecture:
+- **The Warning**: At precisely the 55-minute mark, the script aggressively injects a native UI warning directly onto your cloud desktop (using `osascript` on macOS, `notify-send` on Linux, and a direct `wtsapi32.dll` C# payload on Windows).
+- **The Bypass**: At the 57-minute mark, the script autonomously kills the active Pinggy tunnel and immediately restarts a brand-new one to bypass the 60-minute limit.
+- **Session Persistence**: Because the tunnel engine is fully decoupled from the actual Desktop Environment (XFCE/GNOME/Windows), **your session remains 100% active in the background**. Any open Chrome tabs, running scripts, or downloading files will continue uninterrupted! Just check the GitHub Actions logs for the newly generated URL, reconnect, and resume exactly where you left off.
+
 ---
 
 ## 🐛 Troubleshooting
