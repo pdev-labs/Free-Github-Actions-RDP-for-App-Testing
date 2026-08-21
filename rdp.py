@@ -587,69 +587,69 @@ import re
 
 def inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice='linux', de_choice='xfce'):
     if tunnel == "pinggy":
-        # Inject the 57-minute keepalive loop for Pinggy
-        # 1. Wrap the ssh command in a while loop
         template = re.sub(
             r"([ \t]+)(ssh -T -p 443 -R0:localhost:[0-9]+ -o StrictHostKeyChecking=no.*&)", 
             r"\1while true; do\n\1    \2\n\1    SSH_PID=$!", 
             template
         )
-                # OS-Specific Popup Logic
         popup_cmd = ""
         if de_choice != 'cli':
             if os_choice == 'windows':
                 popup_cmd = "powershell.exe -EncodedCommand CgAkAGMAbwBkAGUAIAA9ACAAQAAiAAoAdQBzAGkAbgBnACAAUwB5AHMAdABlAG0AOwAKAHUAcwBpAG4AZwAgAFMAeQBzAHQAZQBtAC4AUgB1AG4AdABpAG0AZQAuAEkAbgB0AGUAcgBvAHAAUwBlAHIAdgBpAGMAZQBzADsACgBwAHUAYgBsAGkAYwAgAGMAbABhAHMAcwAgAFcAVABTACAAewAKACAAIAAgACAAWwBEAGwAbABJAG0AcABvAHIAdAAoACIAdwB0AHMAYQBwAGkAMwAyAC4AZABsAGwAIgAsACAAUwBlAHQATABhAHMAdABFAHIAcgBvAHIAIAA9ACAAdAByAHUAZQApAF0ACgAgACAAIAAgAHAAdQBiAGwAaQBjACAAcwB0AGEAdABpAGMAIABlAHgAdABlAHIAbgAgAGIAbwBvAGwAIABXAFQAUwBTAGUAbgBkAE0AZQBzAHMAYQBnAGUAKABJAG4AdABQAHQAcgAgAGgAUwBlAHIAdgBlAHIALAAgAGkAbgB0ACAAUwBlAHMAcwBpAG8AbgBJAGQALAAgAHMAdAByAGkAbgBnACAAcABUAGkAdABsAGUALAAgAGkAbgB0ACAAVABpAHQAbABlAEwAZQBuAGcAdABoACwAIABzAHQAcgBpAG4AZwAgAHAATQBlAHMAcwBhAGcAZQAsACAAaQBuAHQAIABNAGUAcwBzAGEAZwBlAEwAZQBuAGcAdABoACwAIABpAG4AdAAgAFMAdAB5AGwAZQAsACAAaQBuAHQAIABUAGkAbQBlAG8AdQB0ACwAIABvAHUAdAAgAGkAbgB0ACAAcABSAGUAcwBwAG8AbgBzAGUALAAgAGIAbwBvAGwAIABiAFcAYQBpAHQAKQA7AAoAfQAKACIAQAAKAEEAZABkAC0AVAB5AHAAZQAgAC0AVAB5AHAAZQBEAGUAZgBpAG4AaQB0AGkAbwBuACAAJABjAG8AZABlAAoACgAkAHQAaQB0AGwAZQAgAD0AIAAiAFAAaQBuAGcAZwB5ACAARAByAG8AcAAgAFcAYQByAG4AaQBuAGcAIgAKACQAbQBzAGcAIAA9ACAAIgBXAEEAUgBOAEkATgBHADoAIABUAHUAbgBuAGUAbAAgAGQAcgBvAHAAcABpAG4AZwAgAGkAbgAgADIAIABtAGkAbgBzACEAIABHAGUAdAAgAG4AZQB3ACAAVQBSAEwAIABmAHIAbwBtACAARwBpAHQASAB1AGIAIABBAGMAdABpAG8AbgBzAC4AIABUAGgAaQBzACAAcABvAHAAdQBwACAAdwBpAGwAbAAgAGEAdQB0AG8ALQBjAGwAbwBzAGUALgAiAAoAJAB0AGkAdABsAGUATABlAG4AIAA9ACAAJAB0AGkAdABsAGUALgBMAGUAbgBnAHQAaAAKACQAbQBzAGcATABlAG4AIAA9ACAAJABtAHMAZwAuAEwAZQBuAGcAdABoAAoACgAkAHQAaQBtAGUAbwB1AHQAIAA9ACAAKABHAGUAdAAtAEQAYQB0AGUAKQAuAEEAZABkAFMAZQBjAG8AbgBkAHMAKAAxADIAMAApAAoAdwBoAGkAbABlACAAKAAoAEcAZQB0AC0ARABhAHQAZQApACAALQBsAHQAIAAkAHQAaQBtAGUAbwB1AHQAKQAgAHsACgAgACAAIAAgAGYAbwByACAAKAAkAGkAPQAxADsAIAAkAGkAIAAtAGwAZQAgADEAMAA7ACAAJABpACsAKwApACAAewAKACAAIAAgACAAIAAgACAAIAAkAHIAZQBzAHAAIAA9ACAAMAAKACAAIAAgACAAIAAgACAAIABbAHYAbwBpAGQAXQBbAFcAVABTAF0AOgA6AFcAVABTAFMAZQBuAGQATQBlAHMAcwBhAGcAZQAoAFsASQBuAHQAUAB0AHIAXQA6ADoAWgBlAHIAbwAsACAAJABpACwAIAAkAHQAaQB0AGwAZQAsACAAJAB0AGkAdABsAGUATABlAG4ALAAgACQAbQBzAGcALAAgACQAbQBzAGcATABlAG4ALAAgADIANgAyADEAOQAyACwAIAAxADAALAAgAFsAcgBlAGYAXQAkAHIAZQBzAHAALAAgACQAdAByAHUAZQApAAoAIAAgACAAIAB9AAoAfQAKAA== || true"
             elif os_choice == 'macos':
                 popup_cmd = "osascript -e 'display notification \"Tunnel dropping in 2 mins! Get new URL from GitHub Actions. This popup will auto-close.\" with title \"Pinggy Drop Warning (2 Mins)\"' || true"
-            elif os_choice == 'linux':
+            elif os_choice == 'linux' or os_choice == 'custom_iso':
                 popup_cmd = "notify-send \"Pinggy Drop Warning\" \"Tunnel dropping in 2 mins! Get new URL from GitHub Actions. This popup will auto-close.\" || true"
                 
-        warning_block = f"""sleep 3300
-            echo \"[$(date)] 55 minutes reached. Firing OS warning popup...\"
+        warning_block = f'''sleep 3300
+            echo "[$(date)] 55 minutes reached. Firing OS warning popup..."
             ( {popup_cmd} ) &
             sleep 120
-            echo \"[$(date)] 57 minutes reached. Restarting Pinggy tunnel to bypass 60-min limit...\"
-            kill $SSH_PID"""
+            echo "[$(date)] 57 minutes reached. Restarting Pinggy tunnel to bypass 60-min limit..."
+            kill $SSH_PID'''
             
-        template = template.replace(
-            "sleep 21600",
-            warning_block
-        )
-        # 3. Append the done closure at the end of the script (after 'fi')
-        template = re.sub(
-            r"(exit 1\s*fi)", 
-            r"\1\n        sleep 2\n        done\n        sleep 21600", 
-            template
-        )
+        template = template.replace("sleep 21600", warning_block)
+        template = re.sub(r"(exit 1\s*fi)", r"\1\n        sleep 2\n        done\n        sleep 21600", template)
         return template
         
     if tunnel == "ngrok":
-        # Replace Pinggy SSH command with Ngrok
-        ngrok_cmd = f"""wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
+        if os_choice == 'windows':
+            ngrok_cmd = f'''wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip
+        unzip -q ngrok-v3-stable-windows-amd64.zip
+        ./ngrok.exe authtoken {ngrok_token}
+        ./ngrok.exe tcp {port} --log=stdout > pinggy.log 2>&1 &'''
+        elif os_choice == 'macos':
+            ngrok_cmd = f'''wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-darwin-amd64.zip
+        unzip -q ngrok-v3-stable-darwin-amd64.zip
+        ./ngrok authtoken {ngrok_token}
+        ./ngrok tcp {port} --log=stdout > pinggy.log 2>&1 &'''
+        else:
+            ngrok_cmd = f'''wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
         tar -xf ngrok-v3-stable-linux-amd64.tgz
         ./ngrok authtoken {ngrok_token}
-        ./ngrok tcp {port} --log=stdout > pinggy.log 2>&1 &"""
+        ./ngrok tcp {port} --log=stdout > pinggy.log 2>&1 &'''
         
-        # We replace the pinggy bash ssh command. 
-        # Note: the pinggy log file is still used to capture output for minimal diff.
         template = re.sub(r"ssh -T -p 443 -R0:localhost:[0-9]+ -o StrictHostKeyChecking=no.*&", ngrok_cmd, template)
-        
-
         template = re.sub(r'URL=\$\(grep -o "tcp://\.\*" .* \| head -n 1\)', "URL=$(curl -s localhost:4040/api/tunnels | grep -o '\"public_url\":\"tcp://[^\"]*' | grep -o 'tcp://.*' | head -n 1)", template)
         template = template.replace("Pinggy free tier is limited to 60 minutes", "Ngrok tunnel will persist for up to 6 hours")
         template = template.replace("Pinggy tunnel", "Ngrok tunnel")
         return template
 
     if tunnel == "cloudflare":
-        cf_cmd = f"""wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+        if os_choice == 'windows':
+            cf_cmd = f'''wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
+        ./cloudflared-windows-amd64.exe tunnel --url tcp://localhost:{port} > cloudflared.log 2>&1 &'''
+        elif os_choice == 'macos':
+            cf_cmd = f'''brew install cloudflare/cloudflare/cloudflared
+        cloudflared tunnel --url tcp://localhost:{port} > cloudflared.log 2>&1 &'''
+        else:
+            cf_cmd = f'''wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
         chmod +x cloudflared-linux-amd64
-        ./cloudflared-linux-amd64 tunnel --url tcp://localhost:{port} > cloudflared.log 2>&1 &"""
+        ./cloudflared-linux-amd64 tunnel --url tcp://localhost:{port} > cloudflared.log 2>&1 &'''
+        
         template = re.sub(r"ssh -T -p 443 -R0:localhost:[0-9]+ -o StrictHostKeyChecking=no.*&", cf_cmd, template)
-        
-        url_extract = "URL=$(grep -o 'https://.*\.trycloudflare\.com' cloudflared.log | head -n 1)"
+        url_extract = r"URL=$(grep -o 'https://.*\.trycloudflare\.com' cloudflared.log | head -n 1)"
         template = re.sub(r'URL=\$\(grep -o "tcp://\.\*" .* \| head -n 1\)', url_extract, template)
-        
-        # Replace messages
         template = template.replace("Connect using this command: env TERM=xterm-256color ssh -p $PORT runneradmin@$HOST", "Connect using: cloudflared access ssh --hostname ${URL#https://}")
         template = template.replace("Connect using this address: ${URL#tcp://}", "Connect using local port forward: cloudflared access tcp --hostname ${URL#https://} --url 127.0.0.1:{port}")
         template = template.replace("Pinggy free tier is limited to 60 minutes.", "Cloudflare tunnel is infinite. Make sure you have 'cloudflared' installed locally to connect.")
@@ -658,20 +658,30 @@ def inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice='linux', 
         return template
 
     if tunnel == "tailscale":
-        ts_cmd = f"""curl -fsSL https://tailscale.com/install.sh | sh
+        if os_choice == 'windows':
+            ts_cmd = f'''choco install tailscale -y
+        /c/Program\\ Files/Tailscale/tailscale.exe up --authkey {ngrok_token}
+        IP=$(/c/Program\\ Files/Tailscale/tailscale.exe ip -4)'''
+        elif os_choice == 'macos':
+            ts_cmd = f'''brew install tailscale
+        sudo tailscaled > tailscale.log 2>&1 &
+        sleep 5
         sudo tailscale up --authkey {ngrok_token}
-        IP=\$(tailscale ip -4)"""
+        IP=$(tailscale ip -4)'''
+        else:
+            ts_cmd = f'''curl -fsSL https://tailscale.com/install.sh | sh
+        sudo tailscale up --authkey {ngrok_token}
+        IP=\\$(tailscale ip -4)'''
+        
         template = re.sub(r"ssh -T -p 443 -R0:localhost:[0-9]+ -o StrictHostKeyChecking=no.*&", ts_cmd, template)
-        
-        template = re.sub(r'URL=\$\(grep -o "tcp://\.\*" .* \| head -n 1\)', "URL=$IP", template)
-        
-        # Replace messages
+        template = re.sub(r'URL=\$\(grep -o "tcp://\.\*" .* \| head -n 1\)', r"URL=$IP", template)
         template = template.replace("Connect using this command: env TERM=xterm-256color ssh -p $PORT runneradmin@$HOST", "Connect using: env TERM=xterm-256color ssh runneradmin@$URL")
         template = template.replace("Connect using this address: ${URL#tcp://}", "Connect using this address: $URL")
         template = template.replace("Pinggy free tier is limited to 60 minutes.", "Tailscale VPN tunnel is active securely.")
         template = template.replace("Pinggy tunnel", "Tailscale VPN")
         template = template.replace("pinggy.log", "tailscale_install.log")
         return template
+
 
 def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice="xfce", app_choice_str="", custom_download_logic="", pub_key="", tunnel="pinggy", ngrok_token=""):
     if os_choice == "windows":
@@ -983,8 +993,13 @@ def main():
             
             if key_choice == "secret":
                 print("\n[+] Setting Tailscale Auth Key as a GitHub Secret...")
-                subprocess.run(["gh", "secret", "set", "TAILSCALE_AUTHKEY", "--body", ts_key], check=True)
-                ngrok_token = "${{ secrets.TAILSCALE_AUTHKEY }}"
+                try:
+                    subprocess.run(["gh", "secret", "set", "TAILSCALE_AUTHKEY", "--body", ts_key], check=True)
+                    ngrok_token = "${{ secrets.TAILSCALE_AUTHKEY }}"
+                except subprocess.CalledProcessError:
+                    print("[!] ERROR: Your GitHub token lacks permissions to set repository secrets.")
+                    print("[!] Falling back to direct injection into the workflow file...")
+                    ngrok_token = ts_key
             else:
                 ngrok_token = ts_key
     
