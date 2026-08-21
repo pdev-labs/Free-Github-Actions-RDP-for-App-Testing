@@ -19,7 +19,7 @@ If you want to contribute code directly, please follow this workflow:
 1. **Fork the repository** to your own GitHub account.
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/YOUR-USERNAME/Free-Github-Actions-RDP-for-App-Testing.git
+   git clone https://github.com/pdev-labs/Free-Github-Actions-RDP-for-App-Testing.git
    cd Free-Github-Actions-RDP-for-App-Testing
    ```
 3. **Create a new branch** for your feature or bug fix:
