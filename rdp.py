@@ -112,7 +112,7 @@ jobs:
         if [ ! -z "$URL" ]; then
             echo "==========================================================="
             echo "RDP is Ready!"
-            echo "Connect using this address: $URL"
+            echo "Connect using this address: ${URL#tcp://}"
             echo "Username: runneradmin"
             echo "Password: ThePassword123!"
             echo "Note: Pinggy free tier is limited to 60 minutes."
