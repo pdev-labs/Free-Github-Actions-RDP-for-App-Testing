@@ -210,14 +210,17 @@ To connect to your cloud environments, we recommend the following clients based 
 *   **Windows**: Remote Desktop Connection (Built-in - search for `mstsc`).
 *   **macOS**: [Microsoft Remote Desktop](https://apps.apple.com/us/app/microsoft-remote-desktop/id1295203466) (Available on the Mac App Store).
 *   **Linux**: [Remmina](https://remmina.org/) (Highly recommended for stability and audio routing) or `xfreerdp`.
+*   **Android**: [Microsoft Remote Desktop](https://play.google.com/store/apps/details?id=com.microsoft.rdc.androidx) (Available on Google Play).
 
 **For VNC (macOS Desktop / Custom ISOs):**
 *   **macOS**: Screen Sharing (Built-in). You can simply open Safari and type `vnc://[IP_ADDRESS]:[PORT]`.
 *   **Windows/Linux/macOS**: [TigerVNC Viewer](https://tigervnc.org/) or [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/).
+*   **Android**: [VNC Viewer](https://play.google.com/store/apps/details?id=com.realvnc.viewer.android) (by RealVNC) or [bVNC Secure](https://play.google.com/store/apps/details?id=com.iiordanov.freebVNC).
 
 **For SSH (CLI Environments):**
 *   **macOS/Linux**: The built-in Terminal app (`ssh` command).
 *   **Windows**: Windows Terminal (Built-in to Windows 11) or [PuTTY](https://www.putty.org/).
+*   **Android**: [Termux](https://termux.dev/) (Available via F-Droid) or [JuiceSSH](https://play.google.com/store/apps/details?id=com.sonelli.juicessh).
 
 ---
 
