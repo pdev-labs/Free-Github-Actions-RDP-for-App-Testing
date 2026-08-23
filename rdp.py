@@ -899,7 +899,23 @@ def main():
                 ).execute()
     
         elif os_choice == "android":
-            custom_download_logic = 'aria2c -x 16 -s 16 -k 1M -o custom.iso "https://sourceforge.net/projects/android-x86/files/Release%209.0/android-x86_64-9.0-r2.iso/download"'
+            android_version = inquirer.select(
+                message="Select Android version to install:",
+                choices=[
+                    Choice("9.0", "Android-x86 9.0 Pie (Recommended)"),
+                    Choice("8.1", "Android-x86 8.1 Oreo"),
+                    Choice("7.1", "Android-x86 7.1 Nougat")
+                ]
+            ).execute()
+            
+            if android_version == "9.0":
+                iso_url = "https://sourceforge.net/projects/android-x86/files/Release%209.0/android-x86_64-9.0-r2.iso/download"
+            elif android_version == "8.1":
+                iso_url = "https://sourceforge.net/projects/android-x86/files/Release%208.1/android-x86_64-8.1-r6.iso/download"
+            else:
+                iso_url = "https://sourceforge.net/projects/android-x86/files/Release%207.1/android-x86_64-7.1-r5.iso/download"
+                
+            custom_download_logic = f'aria2c -x 16 -s 16 -k 1M -o custom.iso "{iso_url}"'
             base_dir = os.path.join(os.getcwd(), repo_name)
             method = "url"
         else:
