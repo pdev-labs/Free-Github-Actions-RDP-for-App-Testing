@@ -899,7 +899,7 @@ def main():
                 ).execute()
     
         elif os_choice == "android":
-            custom_download_logic = 'wget -q -O custom.iso "https://sourceforge.net/projects/android-x86/files/Release%209.0/android-x86_64-9.0-r2.iso/download"'
+            custom_download_logic = 'aria2c -x 16 -s 16 -k 1M -o custom.iso "https://sourceforge.net/projects/android-x86/files/Release%209.0/android-x86_64-9.0-r2.iso/download"'
             base_dir = os.path.join(os.getcwd(), repo_name)
             method = "url"
         else:
