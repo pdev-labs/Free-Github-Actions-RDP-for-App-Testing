@@ -795,11 +795,9 @@ def main():
         os_choices = {
             "windows": ["windows-latest", "windows-2022", "windows-2019"],
             "macos": [
-                Choice("macos-latest", "macos-latest (Apple Silicon - Black Screen Warning)"),
-                Choice("macos-14", "macos-14 (Apple Silicon - Black Screen Warning)"),
-                Choice("macos-13", "macos-13 (Intel - VNC Supported)"),
-                Choice("macos-12", "macos-12 (Intel - VNC Supported)"),
-                Choice("macos-11", "macos-11 (Intel - VNC Supported)")
+                Choice("macos-latest", "macos-latest (Apple Silicon - VNC Broken/Black Screen. Use CLI mode!)"),
+                Choice("macos-14", "macos-14 (Apple Silicon - VNC Broken/Black Screen. Use CLI mode!)"),
+                Choice("macos-13", "macos-13 (Intel - VNC Supported but Deprecating soon)")
             ],
             "linux": [
                 "ubuntu:latest", "ubuntu:22.04", "ubuntu:20.04",
