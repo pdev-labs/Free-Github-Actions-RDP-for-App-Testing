@@ -702,6 +702,8 @@ def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice
             return inject_tunnel_logic(MACOS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 5900, os_choice, de_choice)
     elif os_choice == "custom_iso":
         return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", custom_download_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
+    elif os_choice == "android":
+        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", custom_download_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
     else:
         raise ValueError(f"Unknown OS choice: {os_choice}")
 
@@ -808,6 +810,7 @@ def main():
                 "linuxmintd/mint21.2-amd64",
                 "manjaro/base:latest"
             ],
+            "android": ["Android-x86 9.0 (Stable)"],
             "custom_iso": ["Custom Local ISO (QEMU Nested Virtualization)"]
         }
         
@@ -817,6 +820,7 @@ def main():
                 Choice("windows", "Windows"),
                 Choice("linux", "Linux"),
                 Choice("macos", "macOS"),
+                Choice("android", "Android"),
                 Choice("custom_iso", "Custom ISO")
             ]
         ).execute()
@@ -828,7 +832,7 @@ def main():
         custom_download_logic = ""
         p2p_procs = None
     
-        if os_choice != "custom_iso":
+        if os_choice not in ["custom_iso", "android"]:
             if os_choice == "macos":
                 version_choice = inquirer.select(
                     message=f"Select version/distro for {os_choice}:",
@@ -894,6 +898,10 @@ def main():
                     ]
                 ).execute()
     
+        elif os_choice == "android":
+            custom_download_logic = 'wget -q -O custom.iso "https://sourceforge.net/projects/android-x86/files/Release%209.0/android-x86_64-9.0-r2.iso/download"'
+            base_dir = os.path.join(os.getcwd(), repo_name)
+            method = "url"
         else:
             # Custom ISO Logic
             source_choice = inquirer.select(
@@ -952,7 +960,7 @@ def main():
     
         print("\n[1/4] Creating local directory structure...")
         base_dir = os.path.join(os.getcwd(), repo_name)
-        if os.path.exists(base_dir) and not (os_choice == "custom_iso" and method == "1"):
+        if os.path.exists(base_dir) and not (os_choice in ["custom_iso", "android"] and method == "1"):
             shutil.rmtree(base_dir)
         os.makedirs(base_dir, exist_ok=True)
             
@@ -1075,7 +1083,7 @@ def main():
     print("The environment is booting up now. Please allow 1-3 minutes for it to start.")
     print(f"Click the Repository URL above, go to your running workflow, and click 'Get connection URL'.")
     print(f"   - For Linux/Windows: Use an RDP client to connect.")
-    print(f"   - For macOS/Custom ISO: Use a VNC client to connect.")
+    print(f"   - For macOS/Android/Custom ISO: Use a VNC client to connect.")
     if tunnel == "pinggy":
         print(f"   * NOTE: The Pinggy free tier will disconnect after 60 minutes.")
     elif tunnel == "ngrok":
