@@ -902,18 +902,39 @@ def main():
             android_version = inquirer.select(
                 message="Select Android version to install:",
                 choices=[
-                    Choice("9.0", "Android-x86 9.0 Pie (Recommended)"),
-                    Choice("8.1", "Android-x86 8.1 Oreo"),
-                    Choice("7.1", "Android-x86 7.1 Nougat")
+                    Choice("15", "Android 15 (Zenith / Bliss OS) - *Requires Custom ISO link*"),
+                    Choice("14", "Android 14 (Bliss OS 16) - *Requires Custom ISO link*"),
+                    Choice("13", "Android 13 (Bliss OS) - *Requires Custom ISO link*"),
+                    Choice("12", "Android 12L (Bliss OS 15) - *Requires Custom ISO link*"),
+                    Choice("11", "Android 11 (Bliss OS 14) - *Requires Custom ISO link*"),
+                    Choice("10", "Android 10 (Bliss OS 12) - *Requires Custom ISO link*"),
+                    Choice("9.0", "Android-x86 9.0 Pie (Stable & Recommended)"),
+                    Choice("8.1", "Android-x86 8.1 Oreo (Legacy)"),
+                    Choice("7.1", "Android-x86 7.1 Nougat (Legacy)"),
+                    Choice("6.0", "Android-x86 6.0 Marshmallow (Legacy)"),
+                    Choice("5.1", "Android-x86 5.1 Lollipop (Legacy)"),
+                    Choice("4.4", "Android-x86 4.4 KitKat (Legacy)")
                 ]
             ).execute()
+            
+            if android_version in ["15", "14", "13", "12", "11", "10"]:
+                print(f"\\n[!] The official Android-x86 project stopped at Android 9.0.")
+                print(f"[!] To run Android {android_version}, you must use community projects like Bliss OS.")
+                print(f"[!] Please restart the script, select 'Custom ISO', and paste a direct download link from https://sourceforge.net/projects/blissos-x86/")
+                sys.exit(0)
             
             if android_version == "9.0":
                 iso_url = "https://sourceforge.net/projects/android-x86/files/Release%209.0/android-x86_64-9.0-r2.iso/download"
             elif android_version == "8.1":
                 iso_url = "https://sourceforge.net/projects/android-x86/files/Release%208.1/android-x86_64-8.1-r6.iso/download"
-            else:
+            elif android_version == "7.1":
                 iso_url = "https://sourceforge.net/projects/android-x86/files/Release%207.1/android-x86_64-7.1-r5.iso/download"
+            elif android_version == "6.0":
+                iso_url = "https://sourceforge.net/projects/android-x86/files/Release%206.0/android-x86_64-6.0-r3.iso/download"
+            elif android_version == "5.1":
+                iso_url = "https://sourceforge.net/projects/android-x86/files/Release%205.1/android-x86_64-5.1-rc1.iso/download"
+            else:
+                iso_url = "https://sourceforge.net/projects/android-x86/files/Release%204.4/android-x86-4.4-r5.iso/download"
                 
             custom_download_logic = f'aria2c -x 16 -s 16 -k 1M -o custom.iso "{iso_url}"'
             base_dir = os.path.join(os.getcwd(), repo_name)
