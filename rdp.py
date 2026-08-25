@@ -1108,13 +1108,20 @@ def main():
     print(f"Repository URL: https://github.com/{gh_user}/{repo_name}/actions")
     
     print("\nTriggering the GitHub Action workflow automatically...")
-    time.sleep(4)  # Wait for GitHub's backend to parse the newly pushed workflow file
-    try:
-        subprocess.run(["gh", "workflow", "run", "rdp.yml", "-R", f"{gh_user}/{repo_name}"], cwd=base_dir, check=True)
-        print("Workflow triggered successfully!")
-    except subprocess.CalledProcessError as e:
-        print("Error triggering the workflow.")
-        print(f"     cd {repo_name} && gh workflow run rdp.yml")
+    
+    max_retries = 6
+    for attempt in range(max_retries):
+        try:
+            time.sleep(5) # Wait for GitHub's backend to parse the newly pushed workflow file
+            subprocess.run(["gh", "workflow", "run", "rdp.yml", "-R", f"{gh_user}/{repo_name}"], cwd=base_dir, check=True, capture_output=True)
+            print("Workflow triggered successfully!")
+            break
+        except subprocess.CalledProcessError as e:
+            if attempt < max_retries - 1:
+                print(f"Waiting for GitHub API to sync workflow (Attempt {attempt + 1}/{max_retries})...")
+            else:
+                print("Error triggering the workflow automatically.")
+                print(f"     cd {repo_name} && gh workflow run rdp.yml")
     
     console.print("[dim]" + "-" * 50 + "[/dim]")
     console.print("[bold magenta]All done![/bold magenta]")
