@@ -963,7 +963,7 @@ def main():
             else:
                 iso_url = "https://sourceforge.net/projects/android-x86/files/Release%204.4/android-x86-4.4-r5.iso/download"
                 
-            custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\naria2c -x 16 -s 16 -k 1M -o custom.iso "$FINAL_URL"'''
+            custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\naria2c -x 16 -s 16 -k 1M -o custom.iso "$FINAL_URL" || wget -O custom.iso "$FINAL_URL"'''
             base_dir = os.path.join(os.getcwd(), repo_name)
             method = "url"
         else:
@@ -984,7 +984,7 @@ def main():
                     message="Enter the direct HTTP/HTTPS URL to the ISO file:",
                     validate=lambda x: x.startswith("http")
                 ).execute().strip()
-                custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\naria2c -x 16 -s 16 -k 1M -o custom.iso "$FINAL_URL"'''
+                custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\naria2c -x 16 -s 16 -k 1M -o custom.iso "$FINAL_URL" || wget -O custom.iso "$FINAL_URL"'''
                 method = "url"
             else:
                 iso_path = inquirer.filepath(
