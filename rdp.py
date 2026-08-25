@@ -1156,8 +1156,8 @@ def main():
     console.print("[dim]" + "-" * 50 + "[/dim]")
     console.print("[bold magenta]All done![/bold magenta]")
     print("The environment is booting up now. Please allow 1-3 minutes for it to start.")
-    print(f"Click the Workflow URL above, click on the running job, and click 'Get connection URL'.")
-    print(f"   - For Linux/Windows: Use an RDP client to connect.")
+    print(f"Click the Workflow URL above, click on the running workflow run, and look at the Summary page.")
+    print(f"Your connection URL will automatically appear in huge text on the Summary page!")
     print(f"   - For macOS/Android/Custom ISO: Use a VNC client to connect.")
     if tunnel == "pinggy":
         print(f"   * NOTE: The Pinggy free tier will disconnect after 60 minutes.")
