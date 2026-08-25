@@ -1108,6 +1108,7 @@ def main():
     print(f"Repository URL: https://github.com/{gh_user}/{repo_name}/actions")
     
     print("\nTriggering the GitHub Action workflow automatically...")
+    time.sleep(4)  # Wait for GitHub's backend to parse the newly pushed workflow file
     try:
         subprocess.run(["gh", "workflow", "run", "rdp.yml", "-R", f"{gh_user}/{repo_name}"], cwd=base_dir, check=True)
         print("Workflow triggered successfully!")
