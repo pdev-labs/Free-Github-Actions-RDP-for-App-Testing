@@ -1134,7 +1134,7 @@ def main():
     console.print("[dim]" + "-" * 50 + "[/dim]")
     print("Next steps:")
     
-    print(f"Repository URL: https://github.com/{gh_user}/{repo_name}/actions")
+    console.print(f"\n[bold cyan]Workflow URL:[/bold cyan] [bold underline blue]https://github.com/{gh_user}/{repo_name}/actions/workflows/rdp.yml[/bold underline blue]\n")
     
     print("\nTriggering the GitHub Action workflow automatically...")
     
@@ -1155,7 +1155,7 @@ def main():
     console.print("[dim]" + "-" * 50 + "[/dim]")
     console.print("[bold magenta]All done![/bold magenta]")
     print("The environment is booting up now. Please allow 1-3 minutes for it to start.")
-    print(f"Click the Repository URL above, go to your running workflow, and click 'Get connection URL'.")
+    print(f"Click the Workflow URL above, click on the running job, and click 'Get connection URL'.")
     print(f"   - For Linux/Windows: Use an RDP client to connect.")
     print(f"   - For macOS/Android/Custom ISO: Use a VNC client to connect.")
     if tunnel == "pinggy":
