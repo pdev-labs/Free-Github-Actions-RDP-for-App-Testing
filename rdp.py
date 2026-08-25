@@ -533,7 +533,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-{download_logic}
+        {download_logic}
     - name: Boot Custom ISO
       run: |
         sudo qemu-system-x86_64 -enable-kvm -m 6G -smp 4 -cdrom custom.iso -vnc :0 -boot d -daemonize
@@ -701,9 +701,11 @@ def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice
         else:
             return inject_tunnel_logic(MACOS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 5900, os_choice, de_choice)
     elif os_choice == "custom_iso":
-        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", custom_download_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
+        indented_logic = custom_download_logic.replace("\n", "\n        ").replace("\\n", "\\n        ")
+        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", indented_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
     elif os_choice == "android":
-        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", custom_download_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
+        indented_logic = custom_download_logic.replace("\n", "\n        ").replace("\\n", "\\n        ")
+        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", indented_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
     else:
         raise ValueError(f"Unknown OS choice: {os_choice}")
 
