@@ -1073,6 +1073,7 @@ def main():
             print("Force pushing to existing repository...")
             subprocess.run(["git", "remote", "add", "origin", f"https://github.com/{gh_user}/{repo_name}.git"], cwd=base_dir, capture_output=True)
             run_command(["git", "push", "-f", "origin", "main"], cwd=base_dir)
+            subprocess.run(["gh", "api", "-X", "PATCH", f"repos/{gh_user}/{repo_name}", "-f", "default_branch=main"], capture_output=True)
         else:
             result = subprocess.run(["gh", "repo", "create", repo_name, "--private", "--source=.", "--remote=origin", "--push"], cwd=base_dir, capture_output=True, text=True)
             if result.returncode != 0:
@@ -1080,6 +1081,7 @@ def main():
                     print("Force pushing to existing repository...")
                     subprocess.run(["git", "remote", "add", "origin", f"https://github.com/{gh_user}/{repo_name}.git"], cwd=base_dir, capture_output=True)
                     run_command(["git", "push", "-f", "origin", "main"], cwd=base_dir)
+                    subprocess.run(["gh", "api", "-X", "PATCH", f"repos/{gh_user}/{repo_name}", "-f", "default_branch=main"], capture_output=True)
                 else:
                     print(f"Error creating repository: {result.stderr.strip()}")
                     sys.exit(1)
