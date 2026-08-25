@@ -798,6 +798,28 @@ def main():
             if not clean:
                 print("Aborting.")
                 sys.exit(1)
+
+            cancel_runs = inquirer.confirm(
+                message="Do you want to stop all currently running Actions in this repository to free up resources?",
+                default=True
+            ).execute()
+            
+            if cancel_runs:
+                print("Fetching active workflows...")
+                try:
+                    runs_output = subprocess.run(
+                        ["gh", "run", "list", "-R", f"{gh_user}/{repo_name}", "--status", "in_progress", "--json", "databaseId", "-q", ".[].databaseId"],
+                        capture_output=True, text=True, check=True
+                    ).stdout.strip().split("\n")
+                    runs = [r for r in runs_output if r]
+                    if runs:
+                        for run_id in runs:
+                            subprocess.run(["gh", "run", "cancel", run_id, "-R", f"{gh_user}/{repo_name}"], capture_output=True)
+                        print(f"Successfully stopped {len(runs)} running workflow(s).")
+                    else:
+                        print("No active workflows found.")
+                except subprocess.CalledProcessError:
+                    print("Failed to fetch or cancel workflows. Ignoring...")
     
         os_choices = {
             "windows": ["windows-latest", "windows-2022", "windows-2019"],
