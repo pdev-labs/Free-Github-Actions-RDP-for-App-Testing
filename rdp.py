@@ -261,7 +261,7 @@ jobs:
                 apt-get update && apt-get install -y android-studio
             fi
             if [ "$DE_CHOICE" != "cli" ]; then
-                apt-get install -y xrdp dbus-x11 xorgxrdp
+                apt-get install -y xrdp dbus-x11 xorgxrdp tigervnc-standalone-server
             fi
             useradd -m -s /bin/bash $USER || true
             echo "$USER:$PASS" | chpasswd
@@ -405,6 +405,9 @@ jobs:
             if [ -d /etc/xrdp ]; then
                 mkdir -p /etc/X11
                 echo "allowed_users=anybody" > /etc/X11/Xwrapper.config
+                echo "needs_root_rights=yes" >> /etc/X11/Xwrapper.config
+                mknod /dev/tty0 c 4 0 || true
+                chmod 666 /dev/tty0 || true
                 rm -f /usr/share/dbus-1/system-services/org.freedesktop.login1.service || true
                 rm -f /usr/share/dbus-1/system-services/org.freedesktop.upower.service || true
                 echo '#!/bin/sh' > /etc/xrdp/startwm.sh
