@@ -402,7 +402,7 @@ jobs:
         fi
 
         if [ "$DE_CHOICE" != "cli" ]; then
-            echo "$XSESSION_CMD" > /home/$USER/.xsession
+            echo "exec dbus-launch --exit-with-session $XSESSION_CMD" > /home/$USER/.xsession
             chown $USER:$USER /home/$USER/.xsession
             chmod +x /home/$USER/.xsession
             if [ -d /etc/xrdp ]; then
@@ -412,8 +412,7 @@ jobs:
                 echo 'if test -r /etc/profile; then' >> /etc/xrdp/startwm.sh
                 echo '    . /etc/profile' >> /etc/xrdp/startwm.sh
                 echo 'fi' >> /etc/xrdp/startwm.sh
-                echo 'test -x /etc/X11/Xsession && exec /etc/X11/Xsession' >> /etc/xrdp/startwm.sh
-                echo 'exec /bin/sh /etc/X11/Xsession' >> /etc/xrdp/startwm.sh
+                echo "exec /home/\$USER/.xsession" >> /etc/xrdp/startwm.sh
                 chmod +x /etc/xrdp/startwm.sh
             fi
         fi
