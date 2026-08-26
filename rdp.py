@@ -608,7 +608,7 @@ def inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice='linux', 
             kill $SSH_PID'''
             
         template = template.replace("sleep 21600", warning_block)
-        template = re.sub(r"(exit 1\s*fi)", r"\1\n        sleep 2\n        done\n        sleep 21600", template)
+        template = re.sub(r"(cat /?pinggy\.log\s*exit 1\s*fi)", r"\1\n        sleep 2\n        done\n        sleep 21600", template)
         return template
         
     if tunnel == "ngrok":
