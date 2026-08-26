@@ -406,16 +406,14 @@ jobs:
             chown $USER:$USER /home/$USER/.xsession
             chmod +x /home/$USER/.xsession
             if [ -d /etc/xrdp ]; then
-                cat << '                STARTWM' > /etc/xrdp/startwm.sh
-                #!/bin/sh
-                unset DBUS_SESSION_BUS_ADDRESS
-                unset XDG_RUNTIME_DIR
-                if test -r /etc/profile; then
-                    . /etc/profile
-                fi
-                test -x /etc/X11/Xsession && exec /etc/X11/Xsession
-                exec /bin/sh /etc/X11/Xsession
-                STARTWM
+                echo '#!/bin/sh' > /etc/xrdp/startwm.sh
+                echo 'unset DBUS_SESSION_BUS_ADDRESS' >> /etc/xrdp/startwm.sh
+                echo 'unset XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh
+                echo 'if test -r /etc/profile; then' >> /etc/xrdp/startwm.sh
+                echo '    . /etc/profile' >> /etc/xrdp/startwm.sh
+                echo 'fi' >> /etc/xrdp/startwm.sh
+                echo 'test -x /etc/X11/Xsession && exec /etc/X11/Xsession' >> /etc/xrdp/startwm.sh
+                echo 'exec /bin/sh /etc/X11/Xsession' >> /etc/xrdp/startwm.sh
                 chmod +x /etc/xrdp/startwm.sh
             fi
         fi
