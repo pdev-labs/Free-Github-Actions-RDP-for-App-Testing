@@ -261,7 +261,7 @@ jobs:
                 apt-get update && apt-get install -y android-studio
             fi
             if [ "$DE_CHOICE" != "cli" ]; then
-                apt-get install -y xrdp dbus-x11 xorgxrdp tigervnc-standalone-server
+                apt-get install -y xrdp dbus-x11 tigervnc-standalone-server
             fi
             useradd -m -s /bin/bash $USER || true
             echo "$USER:$PASS" | chpasswd
@@ -301,6 +301,7 @@ jobs:
                 echo "session required pam_unix.so" >> /etc/pam.d/xrdp-sesman
                 mkdir -p /run/dbus
                 dbus-daemon --system --nofork &
+                sed -i 's/^\[Xorg\]/\[Xorg_disabled\]/g' /etc/xrdp/xrdp.ini
                 /etc/init.d/xrdp start
             fi
         elif command -v pacman >/dev/null; then
@@ -441,6 +442,7 @@ jobs:
             echo "exec /etc/xrdp/startwm.sh" >> /home/$USER/.xsession
             chown $USER:$USER /home/$USER/.xsession
             chmod +x /home/$USER/.xsession
+            sed -i 's/^\[Xorg\]/\[Xorg_disabled\]/g' /etc/xrdp/xrdp.ini || true
         fi
 
         echo "Starting Pinggy Tunnel..."
