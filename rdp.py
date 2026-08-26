@@ -1142,7 +1142,7 @@ def main():
             pub_key = f.read().strip()
 
     workflow_yml = generate_workflow(os_choice, version_choice, architecture, de_choice, app_choice_str, custom_download_logic, pub_key, tunnel, ngrok_token)
-    workflow_yml = workflow_yml.replace('echo "==========================================================="', 'if [ ! -z "$URL" ]; then\n            if [ ! -z "$GITHUB_STEP_SUMMARY" ]; then\n                echo "### 🚀 Connection URL: $URL" >> $GITHUB_STEP_SUMMARY\n            fi\n            echo "==========================================================="', 1)
+    workflow_yml = workflow_yml.replace('echo "==========================================================="', 'if [ ! -z "$GITHUB_STEP_SUMMARY" ]; then\n                echo "### 🚀 Connection URL: $URL" >> $GITHUB_STEP_SUMMARY\n            fi\n            echo "==========================================================="', 1)
     workflow_path = os.path.join(workflow_dir, "rdp.yml")
     with open(workflow_path, "w") as f:
         f.write(workflow_yml)
