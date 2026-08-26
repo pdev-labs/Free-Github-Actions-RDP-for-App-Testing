@@ -963,7 +963,22 @@ def main():
             else:
                 iso_url = "https://sourceforge.net/projects/android-x86/files/Release%204.4/android-x86-4.4-r5.iso/download"
                 
-            custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\naria2c -x 16 -s 16 -k 1M -o custom.iso "$FINAL_URL" || wget -O custom.iso "$FINAL_URL"'''
+            downloader = inquirer.select(
+                message="Select the download engine for the ISO:",
+                choices=[
+                    Choice("aria2c", "aria2c (Multi-connection, faster)"),
+                    Choice("wget", "wget (Single-connection, highly reliable)")
+                ]
+            ).execute()
+            if downloader == "aria2c":
+                connections = inquirer.text(
+                    message="Enter the number of concurrent connections for aria2c (e.g., 16, 8, 4):",
+                    default="16",
+                    validate=lambda x: x.isdigit() and int(x) > 0
+                ).execute().strip()
+                custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\naria2c -x {connections} -s {connections} -k 1M -o custom.iso "$FINAL_URL" || wget -O custom.iso "$FINAL_URL"'''
+            else:
+                custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\nwget -O custom.iso "$FINAL_URL"'''
             base_dir = os.path.join(os.getcwd(), repo_name)
             method = "url"
         else:
@@ -984,7 +999,22 @@ def main():
                     message="Enter the direct HTTP/HTTPS URL to the ISO file:",
                     validate=lambda x: x.startswith("http")
                 ).execute().strip()
-                custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\naria2c -x 16 -s 16 -k 1M -o custom.iso "$FINAL_URL" || wget -O custom.iso "$FINAL_URL"'''
+                downloader = inquirer.select(
+                    message="Select the download engine for the ISO:",
+                    choices=[
+                        Choice("aria2c", "aria2c (Multi-connection, faster)"),
+                        Choice("wget", "wget (Single-connection, highly reliable)")
+                    ]
+                ).execute()
+                if downloader == "aria2c":
+                    connections = inquirer.text(
+                        message="Enter the number of concurrent connections for aria2c (e.g., 16, 8, 4):",
+                        default="16",
+                        validate=lambda x: x.isdigit() and int(x) > 0
+                    ).execute().strip()
+                    custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\naria2c -x {connections} -s {connections} -k 1M -o custom.iso "$FINAL_URL" || wget -O custom.iso "$FINAL_URL"'''
+                else:
+                    custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\nwget -O custom.iso "$FINAL_URL"'''
                 method = "url"
             else:
                 iso_path = inquirer.filepath(
