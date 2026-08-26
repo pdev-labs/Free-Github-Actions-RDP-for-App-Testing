@@ -158,15 +158,17 @@ jobs:
             PKG_DNF="@xfce-desktop"
             XSESSION_CMD="startxfce4"
         elif [ "$DE_CHOICE" == "gnome" ]; then
-            PKG_APT="ubuntu-gnome-desktop"
-            PKG_PACMAN="gnome"
-            PKG_DNF="@gnome-desktop"
-            XSESSION_CMD="gnome-session"
+            echo "GNOME is incompatible with Docker. Falling back to XFCE..."
+            PKG_APT="xfce4 xfce4-goodies"
+            PKG_PACMAN="xfce4 xfce4-goodies"
+            PKG_DNF="@xfce-desktop"
+            XSESSION_CMD="startxfce4"
         elif [ "$DE_CHOICE" == "kde" ]; then
-            PKG_APT="kde-plasma-desktop"
-            PKG_PACMAN="plasma-meta"
-            PKG_DNF="@kde-desktop"
-            XSESSION_CMD="startplasma-x11"
+            echo "KDE is incompatible with Docker. Falling back to XFCE..."
+            PKG_APT="xfce4 xfce4-goodies"
+            PKG_PACMAN="xfce4 xfce4-goodies"
+            PKG_DNF="@xfce-desktop"
+            XSESSION_CMD="startxfce4"
         elif [ "$DE_CHOICE" == "i3" ]; then
             PKG_APT="i3"
             PKG_PACMAN="i3-wm"
@@ -179,23 +181,23 @@ jobs:
             XSESSION_CMD="cli"
         elif [ "$DE_CHOICE" == "stock" ]; then
             if [ "$OS_ID" == "ubuntu" ]; then
-                PKG_APT="ubuntu-desktop"
-                XSESSION_CMD="gnome-session"
+                PKG_APT="xfce4 xfce4-goodies"
+                XSESSION_CMD="startxfce4"
             elif [ "$OS_ID" == "kali" ]; then
                 PKG_APT="kali-linux-default kali-desktop-xfce"
                 XSESSION_CMD="startxfce4"
             elif [ "$OS_ID" == "debian" ]; then
-                PKG_APT="task-gnome-desktop"
-                XSESSION_CMD="gnome-session"
+                PKG_APT="xfce4 xfce4-goodies"
+                XSESSION_CMD="startxfce4"
             elif [ "$OS_ID" == "linuxmint" ]; then
-                PKG_APT="mint-meta-cinnamon"
-                XSESSION_CMD="cinnamon-session"
+                PKG_APT="xfce4 xfce4-goodies"
+                XSESSION_CMD="startxfce4"
             elif [ "$OS_ID" == "fedora" ]; then
-                PKG_DNF="@gnome-desktop"
-                XSESSION_CMD="gnome-session"
+                PKG_DNF="@xfce-desktop"
+                XSESSION_CMD="startxfce4"
             elif [ "$OS_ID" == "arch" ] || [ "$OS_ID" == "manjaro" ]; then
-                PKG_PACMAN="gnome"
-                XSESSION_CMD="gnome-session"
+                PKG_PACMAN="xfce4 xfce4-goodies"
+                XSESSION_CMD="startxfce4"
             else
                 PKG_APT="xfce4 xfce4-goodies"
                 PKG_PACMAN="xfce4 xfce4-goodies"
