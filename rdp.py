@@ -156,7 +156,7 @@ jobs:
             PKG_APT="xfce4 xfce4-goodies"
             PKG_PACMAN="xfce4 xfce4-goodies"
             PKG_DNF="@xfce-desktop"
-            XSESSION_CMD="xfce4-session"
+            XSESSION_CMD="startxfce4"
         elif [ "$DE_CHOICE" == "gnome" ]; then
             PKG_APT="ubuntu-gnome-desktop"
             PKG_PACMAN="gnome"
@@ -183,7 +183,7 @@ jobs:
                 XSESSION_CMD="gnome-session"
             elif [ "$OS_ID" == "kali" ]; then
                 PKG_APT="kali-linux-default kali-desktop-xfce"
-                XSESSION_CMD="xfce4-session"
+                XSESSION_CMD="startxfce4"
             elif [ "$OS_ID" == "debian" ]; then
                 PKG_APT="task-gnome-desktop"
                 XSESSION_CMD="gnome-session"
@@ -200,7 +200,7 @@ jobs:
                 PKG_APT="xfce4 xfce4-goodies"
                 PKG_PACMAN="xfce4 xfce4-goodies"
                 PKG_DNF="@xfce-desktop"
-                XSESSION_CMD="xfce4-session"
+                XSESSION_CMD="startxfce4"
             fi
         fi
 
@@ -404,6 +404,20 @@ jobs:
         if [ "$DE_CHOICE" != "cli" ]; then
             echo "$XSESSION_CMD" > /home/$USER/.xsession
             chown $USER:$USER /home/$USER/.xsession
+            chmod +x /home/$USER/.xsession
+            if [ -d /etc/xrdp ]; then
+                cat << 'STARTWM' > /etc/xrdp/startwm.sh
+#!/bin/sh
+unset DBUS_SESSION_BUS_ADDRESS
+unset XDG_RUNTIME_DIR
+if test -r /etc/profile; then
+    . /etc/profile
+fi
+test -x /etc/X11/Xsession && exec /etc/X11/Xsession
+exec /bin/sh /etc/X11/Xsession
+STARTWM
+                chmod +x /etc/xrdp/startwm.sh
+            fi
         fi
 
         echo "Starting Pinggy Tunnel..."
