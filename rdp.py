@@ -402,19 +402,42 @@ jobs:
         fi
 
         if [ "$DE_CHOICE" != "cli" ]; then
-            echo "exec dbus-launch --exit-with-session $XSESSION_CMD" > /home/$USER/.xsession
-            chown $USER:$USER /home/$USER/.xsession
-            chmod +x /home/$USER/.xsession
             if [ -d /etc/xrdp ]; then
+                mkdir -p /etc/X11
+                echo "allowed_users=anybody" > /etc/X11/Xwrapper.config
+                rm -f /usr/share/dbus-1/system-services/org.freedesktop.login1.service || true
+                rm -f /usr/share/dbus-1/system-services/org.freedesktop.upower.service || true
                 echo '#!/bin/sh' > /etc/xrdp/startwm.sh
                 echo 'unset DBUS_SESSION_BUS_ADDRESS' >> /etc/xrdp/startwm.sh
                 echo 'unset XDG_RUNTIME_DIR' >> /etc/xrdp/startwm.sh
+                echo 'export XDG_SESSION_TYPE=x11' >> /etc/xrdp/startwm.sh
+                if [ "$XSESSION_CMD" = "startxfce4" ] || [ "$XSESSION_CMD" = "xfce4-session" ]; then
+                    echo 'export XDG_SESSION_DESKTOP=xfce' >> /etc/xrdp/startwm.sh
+                    echo 'export XDG_CURRENT_DESKTOP=XFCE' >> /etc/xrdp/startwm.sh
+                elif [ "$XSESSION_CMD" = "gnome-session" ]; then
+                    echo 'export XDG_SESSION_DESKTOP=gnome' >> /etc/xrdp/startwm.sh
+                    echo 'export XDG_CURRENT_DESKTOP=GNOME' >> /etc/xrdp/startwm.sh
+                elif [ "$XSESSION_CMD" = "cinnamon-session" ]; then
+                    echo 'export XDG_SESSION_DESKTOP=cinnamon' >> /etc/xrdp/startwm.sh
+                    echo 'export XDG_CURRENT_DESKTOP=X-CINNAMON' >> /etc/xrdp/startwm.sh
+                elif [ "$XSESSION_CMD" = "startplasma-x11" ]; then
+                    echo 'export XDG_SESSION_DESKTOP=KDE' >> /etc/xrdp/startwm.sh
+                    echo 'export XDG_CURRENT_DESKTOP=KDE' >> /etc/xrdp/startwm.sh
+                fi
                 echo 'if test -r /etc/profile; then' >> /etc/xrdp/startwm.sh
                 echo '    . /etc/profile' >> /etc/xrdp/startwm.sh
                 echo 'fi' >> /etc/xrdp/startwm.sh
-                echo "exec /home/\$USER/.xsession" >> /etc/xrdp/startwm.sh
+                if [ "$XSESSION_CMD" = "startxfce4" ]; then
+                    echo "exec dbus-launch --exit-with-session xfce4-session" >> /etc/xrdp/startwm.sh
+                else
+                    echo "exec dbus-launch --exit-with-session $XSESSION_CMD" >> /etc/xrdp/startwm.sh
+                fi
                 chmod +x /etc/xrdp/startwm.sh
             fi
+            echo "#!/bin/sh" > /home/$USER/.xsession
+            echo "exec /etc/xrdp/startwm.sh" >> /home/$USER/.xsession
+            chown $USER:$USER /home/$USER/.xsession
+            chmod +x /home/$USER/.xsession
         fi
 
         echo "Starting Pinggy Tunnel..."
@@ -1119,7 +1142,7 @@ def main():
             pub_key = f.read().strip()
 
     workflow_yml = generate_workflow(os_choice, version_choice, architecture, de_choice, app_choice_str, custom_download_logic, pub_key, tunnel, ngrok_token)
-    workflow_yml = workflow_yml.replace('echo "==========================================================="', 'echo "### 🚀 Connection URL: $URL" >> $GITHUB_STEP_SUMMARY\n            echo "==========================================================="', 1)
+    workflow_yml = workflow_yml.replace('echo "==========================================================="', 'if [ ! -z "$URL" ]; then\n            if [ ! -z "$GITHUB_STEP_SUMMARY" ]; then\n                echo "### 🚀 Connection URL: $URL" >> $GITHUB_STEP_SUMMARY\n            fi\n            echo "==========================================================="', 1)
     workflow_path = os.path.join(workflow_dir, "rdp.yml")
     with open(workflow_path, "w") as f:
         f.write(workflow_yml)
