@@ -407,11 +407,7 @@ jobs:
         fi
 
         echo "Starting Pinggy Tunnel..."
-        if [ "$DE_CHOICE" == "cli" ]; then
-            ssh -T -p 443 -R0:localhost:22 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io > /pinggy.log 2>&1 &
-        else
-            ssh -T -p 443 -R0:localhost:3389 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io > /pinggy.log 2>&1 &
-        fi
+        ssh -T -p 443 -R0:localhost:{port} -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io > /pinggy.log 2>&1 &
         
         sleep 15
         URL=$(grep -o "tcp://.*" /pinggy.log | head -n 1)
@@ -697,7 +693,7 @@ def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice
         if architecture != "amd64":
             qemu = "\\n    - name: Set up QEMU for multi-arch support\\n      uses: docker/setup-qemu-action@v3"
         port = 22 if de_choice == "cli" else 3389
-        return inject_tunnel_logic(LINUX_WORKFLOW_TEMPLATE.replace("{distro}", version_choice).replace("{architecture}", architecture).replace("{qemu_setup}", qemu).replace("{de_choice}", de_choice).replace("{app_choice_str}", app_choice_str), tunnel, ngrok_token, port, os_choice, de_choice)
+        return inject_tunnel_logic(LINUX_WORKFLOW_TEMPLATE.replace("{distro}", version_choice).replace("{architecture}", architecture).replace("{qemu_setup}", qemu).replace("{de_choice}", de_choice).replace("{app_choice_str}", app_choice_str).replace("{port}", str(port)), tunnel, ngrok_token, port, os_choice, de_choice)
     elif os_choice == "macos":
         if de_choice == "cli":
             return inject_tunnel_logic(MACOS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice).replace("{pub_key}", pub_key), tunnel, ngrok_token, 22, os_choice, de_choice)
