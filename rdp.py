@@ -539,7 +539,7 @@ jobs:
         TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
         QEMU_RAM=$(( TOTAL_RAM - 2000 ))
         if [ "$QEMU_RAM" -lt 2048 ]; then QEMU_RAM=2048; fi
-        sudo qemu-system-x86_64 -enable-kvm -m ${QEMU_RAM}M -smp 4 -cdrom custom.iso -vnc :0 -boot d -vga std -usb -device usb-tablet -daemonize
+        sudo qemu-system-x86_64 -enable-kvm -cpu host -m ${QEMU_RAM}M -smp 4 -cdrom custom.iso -vnc :0 -boot d -vga std -usb -device usb-tablet -daemonize
     - name: Start Pinggy for VNC
       run: |
         ssh -T -p 443 -R0:localhost:5900 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io > pinggy.log 2>&1 &
