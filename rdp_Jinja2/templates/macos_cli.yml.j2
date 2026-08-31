@@ -1,0 +1,48 @@
+name: macOS SSH
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: {{ runner_image }}
+    timeout-minutes: 9999
+    steps:
+{% if enable_cache %}
+    - name: Cache Homebrew packages
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/Homebrew
+        key: brew-cache-{{ runner_image }}
+{% endif %}
+    - name: Enable SSH (Remote Login)
+      run: |
+        sudo systemsetup -setremotelogin on || true
+        sudo dseditgroup -o edit -a $USER -t user com.apple.access_ssh || true
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        echo "{{ pub_key }}" > ~/.ssh/authorized_keys
+        chmod 600 ~/.ssh/authorized_keys
+    - name: Start Pinggy tunnel
+      run: |
+        {% if tunnel == 'pinggy' %}
+        while true; do
+            ssh -T -p 443 -R0:localhost:{{ port }} -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io > pinggy.log 2>&1 &
+            SSH_PID=$!
+            sleep 3300
+            echo "[$(date)] 55 minutes reached. Firing OS warning popup..."
+            {{ popup_cmd }}
+            sleep 120
+            echo "[$(date)] 57 minutes reached. Restarting Pinggy tunnel to bypass 60-min limit..."
+            kill $SSH_PID
+            sleep 2
+        done
+{% elif tunnel == 'ngrok' %}
+        {{ ngrok_cmd }}
+{% elif tunnel == 'cloudflare' %}
+        brew install cloudflare/cloudflare/cloudflared
+        cloudflared tunnel --url tcp://localhost:{{ port }} > pinggy.log 2>&1 &
+{% elif tunnel == 'tailscale' %}
+        brew install tailscale
+        sudo tailscaled &
+        sleep 5
+        sudo tailscale up --authkey={{ ngrok_token }} --hostname=github-actions-runner
+{% endif %}
+        sleep 21600

@@ -1,0 +1,56 @@
+name: Custom ISO VNC
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9999
+    steps:
+{% if enable_cache %}
+    - name: Cache apt packages
+      uses: actions/cache@v4
+      with:
+        path: /var/cache/apt
+        key: apt-cache-{{ runner_image }}
+{% endif %}
+    - name: Free Disk Space
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+        sudo docker image prune --all --force || true
+    - name: Install QEMU
+      run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 qemu-kvm wget curl aria2
+    - name: Download ISO
+      env:
+        GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+      run: |
+        {{ download_logic }}
+    - name: Boot Custom ISO
+      run: |
+        TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
+        QEMU_RAM=$(( TOTAL_RAM - 2000 ))
+        if [ "$QEMU_RAM" -lt 2048 ]; then QEMU_RAM=2048; fi
+        sudo qemu-system-x86_64 -enable-kvm -cpu host -m ${QEMU_RAM}M -smp 4 -cdrom custom.iso -vnc :0 -boot d -vga std -usb -device usb-tablet -daemonize
+    - name: Start Pinggy for VNC
+      run: |
+        {% if tunnel == 'pinggy' %}
+        while true; do
+            ssh -T -p 443 -R0:localhost:{{ port }} -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io > /pinggy.log 2>&1 &
+            SSH_PID=$!
+            sleep 3300
+            echo "[$(date)] 55 minutes reached. Firing OS warning popup..."
+            {{ popup_cmd }}
+            sleep 120
+            echo "[$(date)] 57 minutes reached. Restarting Pinggy tunnel to bypass 60-min limit..."
+            kill $SSH_PID
+            sleep 2
+        done
+{% elif tunnel == 'ngrok' %}
+        {{ ngrok_cmd }}
+{% elif tunnel == 'cloudflare' %}
+        wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+        sudo dpkg -i cloudflared-linux-amd64.deb || true
+        cloudflared tunnel --url tcp://localhost:{{ port }} > /pinggy.log 2>&1 &
+{% elif tunnel == 'tailscale' %}
+        curl -fsSL https://tailscale.com/install.sh | sh
+        sudo tailscale up --authkey={{ ngrok_token }} --hostname=github-actions-runner
+{% endif %}
+        sleep 21600

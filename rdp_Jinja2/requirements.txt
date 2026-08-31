@@ -1,0 +1,3 @@
+InquirerPy
+jinja2
+rich

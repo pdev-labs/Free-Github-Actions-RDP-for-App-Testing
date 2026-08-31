@@ -31,6 +31,28 @@ A powerful Python automation script that dynamically provisions fully interactiv
 
 ---
 
+## 🚀 BETA: Next-Generation Jinja2 Architecture
+
+We have completely rebuilt the engine from the ground up! The massive 700-line monolithic script has been refactored into a highly modular, lightning-fast architecture leveraging **Jinja2** templates, **Asyncio** API polling, and **Persistent Configurations**.
+
+### What's New in Beta?
+- **⚡ Quick Boot Profiles:** Your configurations (OS, Architecture, Tunnel, Apps) are now saved natively! Instantly boot your favorite environments with a single click without going through the menu.
+- **🚀 Docker Layer Caching:** `actions/cache@v4` is now dynamically injected. Packages installed via `apt`, `brew`, or `choco` are cached, making subsequent boots almost instant!
+- **💻 Developer Profiles:** Choose pre-configured software stacks during setup (e.g., *DevBox: Hacker*, *DevBox: Coder*, *DevBox: Android*).
+- **⏱️ Async Polling Engine:** The old blocking loops have been ripped out and replaced with a non-blocking `asyncio` engine that fetches the RDP/VNC tunnel URLs blazingly fast.
+
+### How to Test the Beta Engine
+To test the new Beta architecture, ensure you have checked out the `beta` branch and navigate into the `rdp_Jinja2` directory:
+
+```bash
+git checkout beta
+cd rdp_Jinja2
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python rdp.py
+```
+
 ## Installation Guide
 
 This script runs on Python and requires Git and the GitHub CLI (`gh`). Below are the installation instructions for your specific host operating system.

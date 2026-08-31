@@ -1,0 +1,333 @@
+name: Linux Desktop
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9999
+    steps:
+    - name: Provision Linux Desktop
+      run: |
+        cat << 'EOF' > setup.sh
+        #!/bin/bash
+        export DEBIAN_FRONTEND=noninteractive
+        export USER=runner
+        export PASS=ThePassword123!
+
+        OS_ID=$(cat /etc/os-release | grep -E '^ID=' | cut -d= -f2 | tr -d '"')
+        DE_CHOICE="xfce"
+        APP_CHOICE="1"
+        
+        PKG_APT=""
+        PKG_PACMAN=""
+        PKG_DNF=""
+        XSESSION_CMD=""
+        
+        if [ "$DE_CHOICE" == "xfce" ]; then
+            PKG_APT="xfce4 xfce4-goodies"
+            PKG_PACMAN="xfce4 xfce4-goodies"
+            PKG_DNF="@xfce-desktop"
+            XSESSION_CMD="startxfce4"
+        elif [ "$DE_CHOICE" == "gnome" ]; then
+            PKG_APT="ubuntu-gnome-desktop"
+            PKG_PACMAN="gnome"
+            PKG_DNF="@gnome-desktop"
+            XSESSION_CMD="gnome-session"
+        elif [ "$DE_CHOICE" == "kde" ]; then
+            PKG_APT="kde-plasma-desktop"
+            PKG_PACMAN="plasma-meta"
+            PKG_DNF="@kde-desktop"
+            XSESSION_CMD="startplasma-x11"
+        elif [ "$DE_CHOICE" == "i3" ]; then
+            PKG_APT="i3"
+            PKG_PACMAN="i3-wm"
+            PKG_DNF="i3"
+            XSESSION_CMD="i3"
+        elif [ "$DE_CHOICE" == "cli" ]; then
+            PKG_APT=""
+            PKG_PACMAN=""
+            PKG_DNF=""
+            XSESSION_CMD="cli"
+        elif [ "$DE_CHOICE" == "stock" ]; then
+            if [ "$OS_ID" == "ubuntu" ]; then
+                PKG_APT="ubuntu-desktop"
+                XSESSION_CMD="gnome-session"
+            elif [ "$OS_ID" == "kali" ]; then
+                PKG_APT="kali-linux-default kali-desktop-xfce"
+                XSESSION_CMD="startxfce4"
+            elif [ "$OS_ID" == "debian" ]; then
+                PKG_APT="task-gnome-desktop"
+                XSESSION_CMD="gnome-session"
+            elif [ "$OS_ID" == "linuxmint" ]; then
+                PKG_APT="mint-meta-cinnamon"
+                XSESSION_CMD="cinnamon-session"
+            elif [ "$OS_ID" == "fedora" ]; then
+                PKG_DNF="@gnome-desktop"
+                XSESSION_CMD="gnome-session"
+            elif [ "$OS_ID" == "arch" ] || [ "$OS_ID" == "manjaro" ]; then
+                PKG_PACMAN="gnome"
+                XSESSION_CMD="gnome-session"
+            else
+                PKG_APT="xfce4 xfce4-goodies"
+                PKG_PACMAN="xfce4 xfce4-goodies"
+                PKG_DNF="@xfce-desktop"
+                XSESSION_CMD="startxfce4"
+            fi
+        fi
+
+        if [[ "$APP_CHOICE" == *"0"* ]]; then
+            PKG_APT="$PKG_APT firefox"
+            PKG_PACMAN="$PKG_PACMAN firefox"
+            PKG_DNF="$PKG_DNF firefox"
+        fi
+        if [[ "$APP_CHOICE" == *"1"* ]]; then
+            PKG_APT="$PKG_APT nano vim"
+            PKG_PACMAN="$PKG_PACMAN nano vim"
+            PKG_DNF="$PKG_DNF nano vim"
+        fi
+        if [[ "$APP_CHOICE" == *"2"* ]]; then
+            PKG_APT="$PKG_APT docker.io"
+            PKG_PACMAN="$PKG_PACMAN docker"
+            PKG_DNF="$PKG_DNF docker"
+        fi
+        if [[ "$APP_CHOICE" == *"3"* ]]; then
+            PKG_APT="$PKG_APT nmap netcat-traditional curl wget"
+            PKG_PACMAN="$PKG_PACMAN nmap gnu-netcat curl wget"
+            PKG_DNF="$PKG_DNF nmap nmap-ncat curl wget"
+        fi
+        if [[ "$APP_CHOICE" == *"4"* ]]; then
+            PKG_APT="$PKG_APT git build-essential"
+            PKG_PACMAN="$PKG_PACMAN git base-devel"
+            PKG_DNF="$PKG_DNF git @development-tools"
+        fi
+        if [[ "$APP_CHOICE" == *"5"* ]]; then
+            PKG_APT="$PKG_APT nmap wireshark tshark metasploit-framework"
+            PKG_PACMAN="$PKG_PACMAN nmap wireshark-cli metasploit"
+            PKG_DNF="$PKG_DNF nmap wireshark metasploit"
+        fi
+        if [[ "$APP_CHOICE" == *"6"* ]]; then
+            PKG_APT="$PKG_APT nodejs npm python3-pip docker.io apt-transport-https software-properties-common"
+            PKG_PACMAN="$PKG_PACMAN nodejs npm python-pip docker code"
+            PKG_DNF="$PKG_DNF nodejs npm python3-pip docker"
+        fi
+        if [[ "$APP_CHOICE" == *"7"* ]]; then
+            PKG_APT="$PKG_APT default-jdk"
+            PKG_PACMAN="$PKG_PACMAN jdk-openjdk"
+            PKG_DNF="$PKG_DNF java-latest-openjdk"
+        fi
+
+        echo "Detecting package manager and installing packages..."
+        if command -v apt-get >/dev/null; then
+            apt-get update
+            apt-get install -y sudo openssh-server openssh-client passwd curl wget gpg $PKG_APT
+            if [[ "$APP_CHOICE" == *"6"* ]]; then
+                wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
+                install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
+                sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
+                rm -f packages.microsoft.gpg
+                apt-get update && apt-get install -y code
+            fi
+            if [[ "$APP_CHOICE" == *"7"* ]]; then
+                add-apt-repository ppa:maarten-fonville/android-studio -y
+                apt-get update && apt-get install -y android-studio
+            fi
+            if [ "$DE_CHOICE" != "cli" ]; then
+                apt-get install -y xrdp dbus-x11 xorgxrdp
+            fi
+            useradd -m -s /bin/bash $USER || true
+            echo "$USER:$PASS" | chpasswd
+            echo "root:$PASS" | chpasswd
+            usermod -U $USER || true
+            usermod -aG sudo $USER
+            mkdir -p /run/sshd
+            sed -i 's/required pam_loginuid.so/optional pam_loginuid.so/g' /etc/pam.d/* || true
+            /usr/sbin/sshd
+            if [ "$DE_CHOICE" != "cli" ]; then
+
+                # Compile and install pulseaudio-module-xrdp for audio redirection
+                echo "Installing PulseAudio and XRDP audio modules..."
+                apt-get install -y pulseaudio pulseaudio-utils build-essential dpkg-dev libpulse-dev git autoconf libtool
+                cd /tmp
+                git clone https://github.com/neutrinolabs/pulseaudio-module-xrdp.git
+                cd pulseaudio-module-xrdp
+                ./bootstrap && ./configure PULSE_DIR=/usr/src/pulseaudio
+                make && make install
+                cd /
+                # Fix XRDP authentication bugs in Docker
+                groupadd tsusers || true
+                groupadd shadow || true
+                usermod -aG tsusers $USER
+                usermod -aG ssl-cert $USER || true
+                usermod -aG shadow xrdp || true
+                adduser xrdp ssl-cert || true
+                if [ -f /etc/xrdp/sesman.ini ]; then
+                    sed -i 's/TerminalServerUsers=tsusers/#TerminalServerUsers=tsusers/g' /etc/xrdp/sesman.ini
+                    sed -i 's/TerminalServerAdmins=tsadmins/#TerminalServerAdmins=tsadmins/g' /etc/xrdp/sesman.ini
+                    sed -i 's/AllowRootLogin=false/AllowRootLogin=true/g' /etc/xrdp/sesman.ini
+                fi
+                # Force completely minimal PAM auth to bypass all Docker container restrictions
+                echo "auth required pam_unix.so" > /etc/pam.d/xrdp-sesman
+                echo "account required pam_unix.so" >> /etc/pam.d/xrdp-sesman
+                echo "password required pam_unix.so" >> /etc/pam.d/xrdp-sesman
+                echo "session required pam_unix.so" >> /etc/pam.d/xrdp-sesman
+                mkdir -p /run/dbus
+                dbus-daemon --system --nofork &
+                /etc/init.d/xrdp start
+            fi
+        elif command -v pacman >/dev/null; then
+            pacman -Sy --noconfirm archlinux-keyring
+            pacman -Syu --noconfirm sudo openssh git pcre $PKG_PACMAN
+            useradd -m -G wheel -s /bin/bash $USER || true
+            echo "$USER:$PASS" | chpasswd
+            echo "root:$PASS" | chpasswd
+            usermod -U $USER || true
+            echo "%wheel ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+            ssh-keygen -A
+            sed -i 's/required pam_loginuid.so/optional pam_loginuid.so/g' /etc/pam.d/* || true
+            /usr/sbin/sshd
+            if [ "$DE_CHOICE" != "cli" ]; then
+
+                # Compile and install pulseaudio-module-xrdp for audio redirection
+                echo "Installing PulseAudio and XRDP audio modules..."
+                apt-get install -y pulseaudio pulseaudio-utils build-essential dpkg-dev libpulse-dev git autoconf libtool
+                cd /tmp
+                git clone https://github.com/neutrinolabs/pulseaudio-module-xrdp.git
+                cd pulseaudio-module-xrdp
+                ./bootstrap && ./configure PULSE_DIR=/usr/src/pulseaudio
+                make && make install
+                cd /
+                # Fix XRDP authentication bugs in Docker
+                groupadd tsusers || true
+                groupadd shadow || true
+                usermod -aG tsusers $USER
+                usermod -aG shadow xrdp || true
+                if [ -f /etc/xrdp/sesman.ini ]; then
+                    sed -i 's/TerminalServerUsers=tsusers/#TerminalServerUsers=tsusers/g' /etc/xrdp/sesman.ini
+                    sed -i 's/TerminalServerAdmins=tsadmins/#TerminalServerAdmins=tsadmins/g' /etc/xrdp/sesman.ini
+                    sed -i 's/AllowRootLogin=false/AllowRootLogin=true/g' /etc/xrdp/sesman.ini
+                fi
+                echo "auth required pam_unix.so" > /etc/pam.d/xrdp-sesman
+                echo "account required pam_unix.so" >> /etc/pam.d/xrdp-sesman
+                echo "password required pam_unix.so" >> /etc/pam.d/xrdp-sesman
+                echo "session required pam_unix.so" >> /etc/pam.d/xrdp-sesman
+                pacman -Syu --noconfirm dbus base-devel pulseaudio
+                mkdir -p /run/dbus
+                dbus-daemon --system --nofork &
+                pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
+                pacman-key --lsign-key 3056513887B78AEB
+                pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' --noconfirm || true
+                if ! grep -q chaotic-aur /etc/pacman.conf; then
+                    echo "[chaotic-aur]" >> /etc/pacman.conf
+                    echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> /etc/pacman.conf
+                fi
+                pacman -Sy --noconfirm xrdp xorgxrdp || { echo "Failed to install xrdp from chaotic-aur. Distro may not be fully compatible."; exit 1; }
+                xrdp-keygen xrdp auto
+                xrdp && xrdp-sesman
+            fi
+        elif command -v dnf >/dev/null; then
+            dnf install -y sudo openssh-server openssh-clients passwd $PKG_DNF
+            if [ "$DE_CHOICE" != "cli" ]; then
+                dnf install -y xrdp dbus-x11 epel-release || dnf install -y xrdp dbus-x11
+            fi
+            useradd -m -G wheel -s /bin/bash $USER || true
+            echo "$USER:$PASS" | chpasswd
+            echo "root:$PASS" | chpasswd
+            usermod -U $USER || true
+            echo "%wheel ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+            ssh-keygen -A
+            sed -i 's/required pam_loginuid.so/optional pam_loginuid.so/g' /etc/pam.d/* || true
+            /usr/sbin/sshd
+            if [ "$DE_CHOICE" != "cli" ]; then
+
+                # Compile and install pulseaudio-module-xrdp for audio redirection
+                echo "Installing PulseAudio and XRDP audio modules..."
+                apt-get install -y pulseaudio pulseaudio-utils build-essential dpkg-dev libpulse-dev git autoconf libtool
+                cd /tmp
+                git clone https://github.com/neutrinolabs/pulseaudio-module-xrdp.git
+                cd pulseaudio-module-xrdp
+                ./bootstrap && ./configure PULSE_DIR=/usr/src/pulseaudio
+                make && make install
+                cd /
+                # Fix XRDP authentication bugs in Docker
+                groupadd tsusers || true
+                groupadd shadow || true
+                usermod -aG tsusers $USER
+                usermod -aG shadow xrdp || true
+                if [ -f /etc/xrdp/sesman.ini ]; then
+                    sed -i 's/TerminalServerUsers=tsusers/#TerminalServerUsers=tsusers/g' /etc/xrdp/sesman.ini
+                    sed -i 's/TerminalServerAdmins=tsadmins/#TerminalServerAdmins=tsadmins/g' /etc/xrdp/sesman.ini
+                    sed -i 's/AllowRootLogin=false/AllowRootLogin=true/g' /etc/xrdp/sesman.ini
+                fi
+                echo "auth required pam_unix.so" > /etc/pam.d/xrdp-sesman
+                echo "account required pam_unix.so" >> /etc/pam.d/xrdp-sesman
+                echo "password required pam_unix.so" >> /etc/pam.d/xrdp-sesman
+                echo "session required pam_unix.so" >> /etc/pam.d/xrdp-sesman
+                mkdir -p /run/dbus
+                dbus-daemon --system --nofork &
+                xrdp-keygen xrdp auto
+                xrdp && xrdp-sesman
+            fi
+        else
+            echo "Unsupported package manager for automated setup"
+            exit 1
+        fi
+
+        if [ "$DE_CHOICE" != "cli" ]; then
+            echo "$XSESSION_CMD" > /home/$USER/.xsession
+            chown $USER:$USER /home/$USER/.xsession
+            chmod +x /home/$USER/.xsession
+            if [ -d /etc/xrdp ]; then
+                cat << '                STARTWM' > /etc/xrdp/startwm.sh
+                #!/bin/sh
+                unset DBUS_SESSION_BUS_ADDRESS
+                unset XDG_RUNTIME_DIR
+                if test -r /etc/profile; then
+                    . /etc/profile
+                fi
+                test -x /etc/X11/Xsession && exec /etc/X11/Xsession
+                exec /bin/sh /etc/X11/Xsession
+                STARTWM
+                chmod +x /etc/xrdp/startwm.sh
+            fi
+        fi
+
+        echo "Starting Pinggy Tunnel..."
+        while true; do
+            ssh -T -p 443 -R0:localhost:3389 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io > /pinggy.log 2>&1 &
+            SSH_PID=$!
+        
+        sleep 15
+        URL=$(grep -o "tcp://.*" /pinggy.log | head -n 1)
+        if [ ! -z "$URL" ]; then
+            echo "==========================================================="
+            if [ "$DE_CHOICE" == "cli" ]; then
+                echo "SSH Server is Ready!"
+                PORT=$(echo $URL | awk -F':' '{print $3}')
+                DOMAIN=$(echo $URL | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
+                echo "Connect using this command: env TERM=xterm-256color ssh $USER@$DOMAIN -p $PORT"
+            else
+                echo "RDP is Ready!"
+                echo "Connect using this address: ${URL#tcp://}"
+                echo "Username: $USER"
+            fi
+            echo "Password: $PASS"
+            echo "Note: Pinggy free tier is limited to 60 minutes."
+            echo "==========================================================="
+            sleep 3300
+            echo "[$(date)] 55 minutes reached. Firing OS warning popup..."
+            ( notify-send "Pinggy Drop Warning" "Tunnel dropping in 2 mins! Get new URL from GitHub Actions. This popup will auto-close." || true ) &
+            sleep 120
+            echo "[$(date)] 57 minutes reached. Restarting Pinggy tunnel to bypass 60-min limit..."
+            kill $SSH_PID
+        else
+            echo "Error: Pinggy failed to start."
+            cat /pinggy.log
+            exit 1
+        fi
+        sleep 2
+        done
+        sleep 21600
+        EOF
+        chmod +x setup.sh
+        
+        echo "Booting ubuntu:latest container on amd64..."
+        docker run --rm --privileged --platform linux/amd64 -v $(pwd)/setup.sh:/setup.sh ubuntu:latest /setup.sh

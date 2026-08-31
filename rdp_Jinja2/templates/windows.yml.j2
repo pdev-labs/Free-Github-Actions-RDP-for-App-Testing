@@ -1,0 +1,49 @@
+name: Windows RDP
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: {{ runner_image }}
+    timeout-minutes: 9999
+    steps:
+{% if enable_cache %}
+    - name: Cache Chocolatey packages
+      uses: actions/cache@v4
+      with:
+        path: C:\ProgramData\chocolatey\cache
+        key: choco-cache-{{ runner_image }}
+{% endif %}
+    - name: Enable RDP Access
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -value 1
+        Set-Service -Name Audiosrv -StartupType 'Automatic'
+        Start-Service Audiosrv
+        reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services" /v fAllowAudioPlayback /t REG_DWORD /d 1 /f
+        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v fDisableAudioCapture /t REG_DWORD /d 0 /f
+        net user runneradmin {{ password }}
+    - name: Start Pinggy tunnel and get connection URL
+      shell: bash
+      run: |
+        {% if tunnel == 'pinggy' %}
+        while true; do
+            ssh -T -p 443 -R0:localhost:{{ port }} -o StrictHostKeyChecking=no -o ServerAliveInterval=30 tcp@a.pinggy.io > pinggy.log 2>&1 &
+            SSH_PID=$!
+            sleep 3300
+            echo "[$(date)] 55 minutes reached. Firing OS warning popup..."
+            {{ popup_cmd }}
+            sleep 120
+            echo "[$(date)] 57 minutes reached. Restarting Pinggy tunnel to bypass 60-min limit..."
+            kill $SSH_PID
+            sleep 2
+        done
+{% elif tunnel == 'ngrok' %}
+        {{ ngrok_cmd }}
+{% elif tunnel == 'cloudflare' %}
+        choco install cloudflared -y
+        cloudflared tunnel --url tcp://localhost:{{ port }} > pinggy.log 2>&1 &
+{% elif tunnel == 'tailscale' %}
+        choco install tailscale -y
+        & 'C:\Program Files\Tailscale\tailscale.exe' up --authkey={{ ngrok_token }} --hostname=github-actions-runner
+{% endif %}
+        sleep 21600

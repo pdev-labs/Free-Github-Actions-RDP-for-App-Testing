@@ -22,8 +22,11 @@ import os
 
 def load_profile():
     if os.path.exists("profiles.json"):
-        with open("profiles.json", "r") as f:
-            profiles = json.load(f)
+        try:
+            with open("profiles.json", "r") as f:
+                profiles = json.load(f)
+        except Exception:
+            profiles = {}
         if profiles:
             choices = [Choice("new", "Create New")] + [Choice(k, f"Load Profile: {k}") for k in profiles.keys()]
             choice = inquirer.select(
@@ -37,8 +40,11 @@ def load_profile():
 def save_profile(data):
     profiles = {}
     if os.path.exists("profiles.json"):
-        with open("profiles.json", "r") as f:
-            profiles = json.load(f)
+        try:
+            with open("profiles.json", "r") as f:
+                profiles = json.load(f)
+        except Exception:
+            profiles = {}
     
     name = inquirer.text(
         message="Enter a name to save this configuration (or press Enter to skip):"
@@ -63,7 +69,7 @@ jobs:
         Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
         Start-Service sshd
         Set-Service -Name sshd -StartupType 'Automatic'
-        net user runneradmin ThePassword123!
+        net user runneradmin {password}
     - name: Start Pinggy tunnel and get connection URL
       shell: bash
       run: |
@@ -76,7 +82,7 @@ jobs:
             echo "==========================================================="
             echo "SSH is Ready!"
             echo "Connect using this command: env TERM=xterm-256color ssh -p $PORT runneradmin@$HOST"
-            echo "Password: ThePassword123!"
+            echo "Password: {password}"
             echo "Note: Pinggy free tier is limited to 60 minutes."
             echo "==========================================================="
             sleep 21600
@@ -103,7 +109,7 @@ jobs:
         Start-Service Audiosrv
         reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services" /v fAllowAudioPlayback /t REG_DWORD /d 1 /f
         reg add "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp" /v fDisableAudioCapture /t REG_DWORD /d 0 /f
-        net user runneradmin ThePassword123!
+        net user runneradmin {password}
     - name: Start Pinggy tunnel and get connection URL
       shell: bash
       run: |
@@ -115,7 +121,7 @@ jobs:
             echo "RDP is Ready!"
             echo "Connect using this address: ${URL#tcp://}"
             echo "Username: runneradmin"
-            echo "Password: ThePassword123!"
+            echo "Password: {password}"
             echo "Note: Pinggy free tier is limited to 60 minutes."
             echo "==========================================================="
             sleep 21600
@@ -132,7 +138,7 @@ LINUX_WORKFLOW_TEMPLATE = """name: Linux Desktop
 on: workflow_dispatch
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: {runner_image}
     timeout-minutes: 9999
     steps:{qemu_setup}
     - name: Provision Linux Desktop
@@ -141,7 +147,7 @@ jobs:
         #!/bin/bash
         export DEBIAN_FRONTEND=noninteractive
         export USER=runner
-        export PASS=ThePassword123!
+        export PASS={password}
 
         OS_ID=$(cat /etc/os-release | grep -E '^ID=' | cut -d= -f2 | tr -d '"')
         DE_CHOICE="{de_choice}"
@@ -277,7 +283,7 @@ jobs:
 
                 # Compile and install pulseaudio-module-xrdp for audio redirection
                 echo "Installing PulseAudio and XRDP audio modules..."
-                apt-get install -y pulseaudio pulseaudio-utils build-essential dpkg-dev libpulse-dev git autoconf libtool
+                pacman -Sy --noconfirm pulseaudio git autoconf libtool base-devel || true
                 cd /tmp
                 git clone https://github.com/neutrinolabs/pulseaudio-module-xrdp.git
                 cd pulseaudio-module-xrdp
@@ -321,7 +327,7 @@ jobs:
 
                 # Compile and install pulseaudio-module-xrdp for audio redirection
                 echo "Installing PulseAudio and XRDP audio modules..."
-                apt-get install -y pulseaudio pulseaudio-utils build-essential dpkg-dev libpulse-dev git autoconf libtool
+                pacman -Sy --noconfirm pulseaudio git autoconf libtool base-devel || true
                 cd /tmp
                 git clone https://github.com/neutrinolabs/pulseaudio-module-xrdp.git
                 cd pulseaudio-module-xrdp
@@ -373,7 +379,7 @@ jobs:
 
                 # Compile and install pulseaudio-module-xrdp for audio redirection
                 echo "Installing PulseAudio and XRDP audio modules..."
-                apt-get install -y pulseaudio pulseaudio-utils build-essential dpkg-dev libpulse-dev git autoconf libtool
+                dnf install -y pulseaudio pulseaudio-libs-devel make gcc git autoconf libtool || true
                 cd /tmp
                 git clone https://github.com/neutrinolabs/pulseaudio-module-xrdp.git
                 cd pulseaudio-module-xrdp
@@ -476,8 +482,7 @@ jobs:
         EOF
         chmod +x setup.sh
         
-        echo "Booting {distro} container on {architecture}..."
-        docker run --rm --privileged --platform linux/{architecture} -v $(pwd)/setup.sh:/setup.sh {distro} /setup.sh
+        {execution_logic}
 """
 
 MACOS_CLI_WORKFLOW_TEMPLATE = r"""name: macOS SSH
@@ -525,11 +530,11 @@ jobs:
     steps:
     - name: Enable VNC (Screen Sharing)
       run: |
-        sudo sysadminctl -resetPasswordFor $USER -newPassword macvnc12
+        sudo sysadminctl -resetPasswordFor $USER -newPassword {password}
         sudo sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "INSERT OR REPLACE INTO access (service, client, client_type, allowed, prompt_count, csreq, indirect_object_identifier_type, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServiceScreenCapture','com.apple.RemoteDesktop.agent',0,2,4,1,NULL,'UNUSED',0,0);" || true
         sudo sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "INSERT OR REPLACE INTO access (service, client, client_type, allowed, prompt_count, csreq, indirect_object_identifier_type, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServicePostEvent','com.apple.RemoteDesktop.agent',0,2,4,1,NULL,'UNUSED',0,0);" || true
         sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -users $USER -privs -all -clientopts -setvnclegacy -vnclegacy yes
-        echo "macvnc12" | perl -we 'BEGIN { @k = unpack "C*", pack "H*", "1734516E8BA8C5E2FF1C39567390ADCA"}; $_ = <>; chomp; s/^(.{8}).*/$1/; @p = unpack "C*", $_; foreach (@k) { printf "%02X", $_ ^ (shift @p || 0) }; print "\n"' | sudo tee /Library/Preferences/com.apple.VNCSettings.txt
+        echo "{password}" | perl -we 'BEGIN { @k = unpack "C*", pack "H*", "1734516E8BA8C5E2FF1C39567390ADCA"}; $_ = <>; chomp; s/^(.{8}).*/$1/; @p = unpack "C*", $_; foreach (@k) { printf "%02X", $_ ^ (shift @p || 0) }; print "\n"' | sudo tee /Library/Preferences/com.apple.VNCSettings.txt
         sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -restart -agent
     - name: Start Pinggy tunnel
       run: |
@@ -541,7 +546,7 @@ jobs:
             echo "VNC is Ready!"
             echo "Connect using this address: ${URL#tcp://}"
             echo "Username: runner"
-            echo "Password: macvnc12"
+            echo "Password: {password}"
             echo "Note: Pinggy free tier is limited to 60 minutes."
             echo "==========================================================="
             sleep 21600
@@ -598,7 +603,11 @@ jobs:
 """
 
 def start_p2p_server(iso_dir, base_dir):
-    port = 8080
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('', 0))
+    port = s.getsockname()[1]
+    s.close()
     print("Starting local HTTP server for P2P streaming...")
     http_proc = subprocess.Popen([sys.executable, "-m", "http.server", str(port)], cwd=iso_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
@@ -637,9 +646,11 @@ def inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice='linux', 
             if os_choice == 'windows':
                 popup_cmd = "powershell.exe -EncodedCommand dQBzAGkAbgBnACAAUwB5AHMAdABlAG0AOwAKAHUAcwBpAG4AZwAgAFMAeQBzAHQAZQBtAC4AUgB1AG4AdABpAG0AZQAuAEkAbgB0AGUAcgBvAHAAUwBlAHIAdgBpAGMAZQBzADsACgBwAHUAYgBsAGkAYwAgAGMAbABhAHMAcwAgAFcAVABTACAAewAKACAAIAAgACAAWwBEAGwAbABJAG0AcABvAHIAdAAoACIAdwB0AHMAYQBwAGkAMwAyAC4AZABsAGwAIgAsACAAUwBlAHQATABhAHMAdABFAHIAcgBvAHIAIAA9ACAAdAByAHUAZQApAF0ACgAgACAAIAAgAHAAdQBiAGwAaQBjACAAcwB0AGEAdABpAGMAIABlAHgAdABlAHIAbgAgAGIAbwBvAGwAIABXAFQAUwBTAGUAbgBkAE0AZQBzAHMAYQBnAGUAKABJAG4AdABQAHQAcgAgAGgAUwBlAHIAdgBlAHIALAAgAGkAbgB0ACAAUwBlAHMAcwBpAG8AbgBJAGQALAAgAHMAdAByAGkAbgBnACAAcABUAGkAdABsAGUALAAgAGkAbgB0ACAAVABpAHQAbABlAEwAZQBuAGcAdABoACwAIABzAHQAcgBpAG4AZwAgAHAATQBlAHMAcwBhAGcAZQAsACAAaQBuAHQAIABNAGUAcwBzAGEAZwBlAEwAZQBuAGcAdABoACwAIABpAG4AdAAgAFMAdAB5AGwAZQAsACAAaQBuAHQAIABUAGkAbQBlAG8AdQB0ACwAIABvAHUAdAAgAGkAbgB0ACAAcABSAGUAcwBwAG8AbgBzAGUALAAgAGIAbwBvAGwAIABiAFcAYQBpAHQAKQA7AAoAfQAKAEEAZABkAC0AVAB5AHAAZQAgAC0AVAB5AHAAZQBEAGUAZgBpAG4AaQB0AGkAbwBuACAAJABjAG8AZABlAAoACgAkAHQAaQB0AGwAZQAgAD0AIAAiAFAAaQBuAGcAZwB5ACAARAByAG8AcAAgAFcAYQByAG4AaQBuAGcAIgAKACQAbQBzAGcAIAA9ACAAIgBXAEEAUgBOAEkATgBHADoAIABUAHUAbgBuAGUAbAAgAGQAcgBvAHAAcABpAG4AZwAgAGkAbgAgADIAIABtAGkAbgBzACEAIABHAGUAdAAgAG4AZQB3ACAAVQBSAEwAIABmAHIAbwBtACAARwBpAHQASAB1AGIAIABBAGMAdABpAG8AbgBzAC4AIABUAGgAaQBzACAAcABvAHAAdQBwACAAdwBpAGwAbAAgAGEAdQB0AG8ALQBjAGwAbwBzAGUALgAiAAoAJAB0AGkAdABsAGUATABlAG4AIAA9ACAAJAB0AGkAdABsAGUALgBMAGUAbgBnAHQAaAAKACQAbQBzAGcATABlAG4AIAA9ACAAJABtAHMAZwAuAEwAZQBuAGcAdABoAAoACgAkAHQAaQBtAGUAbwB1AHQAIAA9ACAAKABHAGUAdAAtAEQAYQB0AGUAKQAuAEEAZABkAFMAZQBjAG8AbgBkAHMAKAAxADIAMAApAAoAdwBoAGkAbABlACAAKAAoAEcAZQB0AC0ARABhAHQAZQApACAALQBsAHQAIAAkAHQAaQBtAGUAbwB1AHQAKQAgAHsACgAgACAAIAAgAGYAbwByACAAKAAkAGkAPQAxADsAIAAkAGkAIAAtAGwAZQAgADEAMAA7ACAAJABpACsAKwApACAAewAKACAAIAAgACAAIAAgACAAIAAkAHIAZQBzAHAAIAA9ACAAMAAKACAAIAAgACAAIAAgACAAIABbAHYAbwBpAGQAXQBbAFcAVABTAF0AOgA6AFcAVABTAFMAZQBuAGQATQBlAHMAcwBhAGcAZQAoAFsASQBuAHQAUAB0AHIAXQA6ADoAWgBlAHIAbwAsACAAJABpACwAIAAkAHQAaQB0AGwAZQAsACAAJAB0AGkAdABsAGUATABlAG4ALAAgACQAbQBzAGcALAAgACQAbQBzAGcATABlAG4ALAAgADIANgAyADEAOQAyACwAIAAxADAALAAgAFsAcgBlAGYAXQAkAHIAZQBzAHAALAAgACQAdAByAHUAZQApAAoAIAAgACAAIAB9AAoAIAAgACAAIABTAHQAYQByAHQALQBTAGwAZQBlAHAAIAAtAFMAZQBjAG8AbgBkAHMAIAA1AAoAfQAKAA== || true"
             elif os_choice == 'macos':
-                popup_cmd = "osascript -e 'display notification \"Tunnel dropping in 2 mins! Get new URL from GitHub Actions. This popup will auto-close.\" with title \"Pinggy Drop Warning (2 Mins)\"' || true"
-            elif os_choice in ['linux', 'custom_iso', 'android']:
-                popup_cmd = "notify-send \"Pinggy Drop Warning\" \"Tunnel dropping in 2 mins! Get new URL from GitHub Actions. This popup will auto-close.\" || true"
+                popup_cmd = "sudo launchctl asuser $(id -u $USER) osascript -e 'display notification \"Tunnel dropping in 2 mins! Get new URL from GitHub Actions. This popup will auto-close.\" with title \"Pinggy Drop Warning (2 Mins)\"' || true"
+            elif os_choice == 'linux':
+                popup_cmd = "for d in 0 10 11 12; do sudo -u $USER DISPLAY=:$d DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u $USER)/bus notify-send \"Pinggy Drop Warning\" \"Tunnel dropping in 2 mins! Get new URL from GitHub Actions. This popup will auto-close.\" || true; done; wall \"WARNING: Pinggy tunnel dropping in 2 mins!\" || true"
+            elif os_choice in ['custom_iso', 'android']:
+                popup_cmd = ""
                 
         warning_block = f'''sleep 3300
             echo "[$(date)] 55 minutes reached. Firing OS warning popup..."
@@ -723,29 +734,59 @@ def inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice='linux', 
         return template
 
 
-def generate_workflow(os_choice, version_choice, architecture="amd64", de_choice="xfce", app_choice_str="", custom_download_logic="", pub_key="", tunnel="pinggy", ngrok_token=""):
+def generate_workflow(password, enable_cache, os_choice, version_choice, architecture="amd64", de_choice="xfce", app_choice_str="", custom_download_logic="", pub_key="", tunnel="pinggy", ngrok_token=""):
+    WINDOWS_CLI_WORKFLOW_TEMPLATE_P = WINDOWS_CLI_WORKFLOW_TEMPLATE_P.replace("{password}", password)
+    WINDOWS_WORKFLOW_TEMPLATE_P = WINDOWS_WORKFLOW_TEMPLATE_P.replace("{password}", password)
+    LINUX_WORKFLOW_TEMPLATE_P = LINUX_WORKFLOW_TEMPLATE_P.replace("{password}", password)
+    MACOS_CLI_WORKFLOW_TEMPLATE_P = MACOS_CLI_WORKFLOW_TEMPLATE_P.replace("{password}", password)
+    MACOS_WORKFLOW_TEMPLATE_P = MACOS_WORKFLOW_TEMPLATE_P.replace("{password}", password)
+    CUSTOM_ISO_WORKFLOW_TEMPLATE_P = CUSTOM_ISO_WORKFLOW_TEMPLATE_P.replace("{password}", password)
+
+
+    cache_step = ""
+    if enable_cache:
+        if os_choice == 'linux':
+            cache_step = '\n    - name: Enable APT Cache\n      if: runner.os == 'Linux'\n      uses: actions/cache@v3\n      with:\n        path: /var/cache/apt/archives\n        key: apt-${{ runner.os }}\n'
+        elif os_choice == 'macos':
+            cache_step = '\n    - name: Enable Homebrew Cache\n      if: runner.os == 'macOS'\n      uses: actions/cache@v3\n      with:\n        path: ~/Library/Caches/Homebrew\n        key: brew-${{ runner.os }}\n'
+            
+    LINUX_WORKFLOW_TEMPLATE_P = LINUX_WORKFLOW_TEMPLATE_P.replace("steps:{qemu_setup}", "steps:{qemu_setup}" + cache_step)
+    MACOS_WORKFLOW_TEMPLATE_P = MACOS_WORKFLOW_TEMPLATE_P.replace("steps:", "steps:" + cache_step)
+    MACOS_CLI_WORKFLOW_TEMPLATE_P = MACOS_CLI_WORKFLOW_TEMPLATE_P.replace("steps:", "steps:" + cache_step)
     if os_choice == "windows":
         if de_choice == "cli":
-            return inject_tunnel_logic(WINDOWS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 22, os_choice, de_choice)
+            return inject_tunnel_logic(WINDOWS_CLI_WORKFLOW_TEMPLATE_P.replace("{runner_image}", version_choice), tunnel, ngrok_token, 22, os_choice, de_choice)
         else:
-            return inject_tunnel_logic(WINDOWS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 3389, os_choice, de_choice)
+            return inject_tunnel_logic(WINDOWS_WORKFLOW_TEMPLATE_P.replace("{runner_image}", version_choice), tunnel, ngrok_token, 3389, os_choice, de_choice)
     elif os_choice == "linux":
         qemu = ""
         if architecture != "amd64":
             qemu = "\\n    - name: Set up QEMU for multi-arch support\\n      uses: docker/setup-qemu-action@v3"
         port = 22 if de_choice == "cli" else 3389
-        return inject_tunnel_logic(LINUX_WORKFLOW_TEMPLATE.replace("{distro}", version_choice).replace("{architecture}", architecture).replace("{qemu_setup}", qemu).replace("{de_choice}", de_choice).replace("{app_choice_str}", app_choice_str).replace("{port}", str(port)), tunnel, ngrok_token, port, os_choice, de_choice)
+        
+        runner_image = "ubuntu-latest"
+        execution_logic = 'echo "Booting {distro} container on {architecture}..."\n        docker run --rm --privileged --platform linux/{architecture} -v $(pwd)/setup.sh:/setup.sh {distro} /setup.sh'
+        
+        if version_choice.startswith("ubuntu:"):
+            runner_image = version_choice.replace(":", "-")
+            execution_logic = 'echo "Running setup directly on GitHub Actions Ubuntu Runner..."\n        sudo bash setup.sh'
+            
+        template = LINUX_WORKFLOW_TEMPLATE_P.replace("{runner_image}", runner_image).replace("{pub_key}", pub_key)
+        template = template.replace("{execution_logic}", execution_logic)
+        template = template.replace("{distro}", version_choice).replace("{architecture}", architecture).replace("{qemu_setup}", qemu).replace("{de_choice}", de_choice).replace("{app_choice_str}", app_choice_str).replace("{port}", str(port))
+        
+        return inject_tunnel_logic(template, tunnel, ngrok_token, port, os_choice, de_choice)
     elif os_choice == "macos":
         if de_choice == "cli":
-            return inject_tunnel_logic(MACOS_CLI_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice).replace("{pub_key}", pub_key), tunnel, ngrok_token, 22, os_choice, de_choice)
+            return inject_tunnel_logic(MACOS_CLI_WORKFLOW_TEMPLATE_P.replace("{runner_image}", version_choice).replace("{pub_key}", pub_key), tunnel, ngrok_token, 22, os_choice, de_choice)
         else:
-            return inject_tunnel_logic(MACOS_WORKFLOW_TEMPLATE.replace("{runner_image}", version_choice), tunnel, ngrok_token, 5900, os_choice, de_choice)
+            return inject_tunnel_logic(MACOS_WORKFLOW_TEMPLATE_P.replace("{runner_image}", version_choice), tunnel, ngrok_token, 5900, os_choice, de_choice)
     elif os_choice == "custom_iso":
         indented_logic = custom_download_logic.replace("\n", "\n        ").replace("\\n", "\\n        ")
-        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", indented_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
+        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE_P.replace("{download_logic}", indented_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
     elif os_choice == "android":
         indented_logic = custom_download_logic.replace("\n", "\n        ").replace("\\n", "\\n        ")
-        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE.replace("{download_logic}", indented_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
+        return inject_tunnel_logic(CUSTOM_ISO_WORKFLOW_TEMPLATE_P.replace("{download_logic}", indented_logic), tunnel, ngrok_token, 5900, os_choice, de_choice)
     else:
         raise ValueError(f"Unknown OS choice: {os_choice}")
 
@@ -1016,7 +1057,7 @@ def main():
                 custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\naria2c -x {connections} -s {connections} -k 1M -o custom.iso "$FINAL_URL" || wget -O custom.iso "$FINAL_URL"'''
             else:
                 custom_download_logic = f'''FINAL_URL=$(curl -LIs -o /dev/null -w %{{url_effective}} "{iso_url}")\nwget -O custom.iso "$FINAL_URL"'''
-            base_dir = os.path.join(os.getcwd(), repo_name)
+            base_dir = os.path.join(os.getcwd(), ".workspaces", repo_name)
             method = "url"
         else:
             # Custom ISO Logic
@@ -1029,7 +1070,7 @@ def main():
             ).execute()
                 
             custom_download_logic = ""
-            base_dir = os.path.join(os.getcwd(), repo_name)
+            base_dir = os.path.join(os.getcwd(), ".workspaces", repo_name)
             
             if source_choice == "2":
                 iso_url = inquirer.text(
@@ -1090,7 +1131,7 @@ def main():
                     custom_download_logic = f'wget "{p2p_url}/{iso_name}" -O custom.iso'
     
         print("\n[1/4] Creating local directory structure...")
-        base_dir = os.path.join(os.getcwd(), repo_name)
+        base_dir = os.path.join(os.getcwd(), ".workspaces", repo_name)
         if os.path.exists(base_dir) and not (os_choice in ["custom_iso", "android"] and method == "1"):
             shutil.rmtree(base_dir)
         os.makedirs(base_dir, exist_ok=True)
@@ -1099,6 +1140,8 @@ def main():
         os.makedirs(workflow_dir, exist_ok=True)
         
         
+    enable_cache = inquirer.confirm(message="Enable GitHub Actions caching for faster boots (caches apt/brew packages)?").execute()
+    
     if not loaded_profile:
         tunnel = inquirer.select(
             message="Select Tunneling Provider:",
@@ -1141,14 +1184,24 @@ def main():
                 ngrok_token = ts_key
     
     pub_key = ""
-    if os_choice == "macos" and de_choice == "cli":
-        if not os.path.exists("macos_runner_key"):
-            print("\nGenerating SSH key pair for macOS CLI access...")
-            subprocess.run(["ssh-keygen", "-t", "ed25519", "-f", "macos_runner_key", "-N", "", "-q"], check=True)
-        with open("macos_runner_key.pub", "r") as f:
-            pub_key = f.read().strip()
+    if os_choice in ["macos", "linux", "windows"] and de_choice == "cli":
+        gen_ssh = inquirer.confirm(message="Would you like to auto-generate an SSH key for connection?").execute()
+        if gen_ssh:
+            key_name = f"{os_choice}_runner_key"
+            if not os.path.exists(key_name):
+                print(f"\nGenerating SSH key pair for {os_choice} CLI access...")
+                import subprocess
+                subprocess.run(["ssh-keygen", "-t", "ed25519", "-f", key_name, "-N", "", "-q"], check=True)
+            with open(f"{key_name}.pub", "r") as f:
+                pub_key = f.read().strip()
+            print(f"[!] You can connect using: ssh -i {key_name} ...")
+        else:
+            pub_key = inquirer.text(message="Enter your public SSH key:").execute().strip()
 
-    workflow_yml = generate_workflow(os_choice, version_choice, architecture, de_choice, app_choice_str, custom_download_logic, pub_key, tunnel, ngrok_token)
+
+    import secrets
+    password = secrets.token_urlsafe(12)
+    workflow_yml = generate_workflow(password, enable_cache, os_choice, version_choice, architecture, de_choice, app_choice_str, custom_download_logic, pub_key, tunnel, ngrok_token)
     workflow_yml = workflow_yml.replace('echo "==========================================================="', 'if [ ! -z "$GITHUB_STEP_SUMMARY" ]; then\n                echo "### 🚀 Connection URL: $URL" >> $GITHUB_STEP_SUMMARY\n            fi\n            echo "==========================================================="', 1)
     workflow_path = os.path.join(workflow_dir, "rdp.yml")
     with open(workflow_path, "w") as f:
@@ -1203,6 +1256,7 @@ def main():
     print("Next steps:")
     
     console.print(f"\n[bold cyan]Workflow URL:[/bold cyan] [bold underline blue]https://github.com/{gh_user}/{repo_name}/actions/workflows/rdp.yml[/bold underline blue]\n")
+    console.print(f"\n[bold green]Generated Password:[/bold green] [bold white]{password}[/bold white]\n")
     
     print("\nTriggering the GitHub Action workflow automatically...")
     
